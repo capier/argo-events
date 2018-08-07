@@ -25,7 +25,7 @@ import (
 const namespacePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 var (
-	// DefaultSensorControllerNamespace is the default namespace where the sensor controller is installed
+	// DefaultSensorControllerNamespace is the default namespace where the sensor sensor-controller is installed
 	DefaultSensorControllerNamespace = "default"
 
 	// ErrReadNamespace occurs when the namespace cannot be read from a Kubernetes pod's service account token

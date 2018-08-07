@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// DefaultConfigMapName returns a formulated name for a configmap name based on the sensor-controller deployment name
+// DefaultConfigMapName returns a formulated name for a configmap name based on the sensor-sensor-controller deployment name
 func DefaultConfigMapName(controllerName string) string {
 	return fmt.Sprintf("%s-configmap", controllerName)
 }

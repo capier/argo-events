@@ -1,19 +1,19 @@
-# The sensor controller listens for changes on the sensor CRD and creates sensor executor jobs
+# The sensor sensor-controller listens for changes on the sensor CRD and creates sensor executor jobs
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: sensor-controller
+  name: sensor-sensor-controller
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: sensor-controller
+        app: sensor-sensor-controller
     spec:
       serviceAccountName: argo-events-sa
       containers:
-      - name: sensor-controller
-        image: argoproj/sensor-controller:latest
+      - name: sensor-sensor-controller
+        image: argoproj/sensor-sensor-controller:latest
         imagePullPolicy: IfNotPresent
         env:
           - name: SENSOR_NAMESPACE
@@ -21,4 +21,4 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: SENSOR_CONFIG_MAP
-            value: sensor-controller-configmap
+            value: sensor-sensor-controller-configmap
