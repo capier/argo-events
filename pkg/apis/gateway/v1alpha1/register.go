@@ -26,7 +26,7 @@ import (
 // SchemeGroupVersion is a group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: gateway.Group, Version: "v1alpha1"}
 
-// SchemaGroupVersionKind is a group version kind used to attach owner references to gateway
+// SchemaGroupVersionKind is a group version kind used to attach owner references to gateway-controller
 var SchemaGroupVersionKind = schema.GroupVersionKind{Group: gateway.Group, Version: "v1alpha1", Kind: gateway.Kind}
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind

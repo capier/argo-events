@@ -59,7 +59,7 @@ func newGateways(c *ArgoprojV1alpha1Client, namespace string) *gateways {
 	}
 }
 
-// Get takes name of the gateway, and returns the corresponding gateway object, and an error if there is any.
+// Get takes name of the gateway-controller, and returns the corresponding gateway-controller object, and an error if there is any.
 func (c *gateways) Get(name string, options v1.GetOptions) (result *v1alpha1.Gateway, err error) {
 	result = &v1alpha1.Gateway{}
 	err = c.client.Get().
@@ -94,7 +94,7 @@ func (c *gateways) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Watch()
 }
 
-// Create takes the representation of a gateway and creates it.  Returns the server's representation of the gateway, and an error, if there is any.
+// Create takes the representation of a gateway-controller and creates it.  Returns the server's representation of the gateway-controller, and an error, if there is any.
 func (c *gateways) Create(gateway *v1alpha1.Gateway) (result *v1alpha1.Gateway, err error) {
 	result = &v1alpha1.Gateway{}
 	err = c.client.Post().
@@ -106,7 +106,7 @@ func (c *gateways) Create(gateway *v1alpha1.Gateway) (result *v1alpha1.Gateway, 
 	return
 }
 
-// Update takes the representation of a gateway and updates it. Returns the server's representation of the gateway, and an error, if there is any.
+// Update takes the representation of a gateway-controller and updates it. Returns the server's representation of the gateway-controller, and an error, if there is any.
 func (c *gateways) Update(gateway *v1alpha1.Gateway) (result *v1alpha1.Gateway, err error) {
 	result = &v1alpha1.Gateway{}
 	err = c.client.Put().
@@ -119,7 +119,7 @@ func (c *gateways) Update(gateway *v1alpha1.Gateway) (result *v1alpha1.Gateway, 
 	return
 }
 
-// Delete takes name of the gateway and deletes it. Returns an error if one occurs.
+// Delete takes name of the gateway-controller and deletes it. Returns an error if one occurs.
 func (c *gateways) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
@@ -141,7 +141,7 @@ func (c *gateways) DeleteCollection(options *v1.DeleteOptions, listOptions v1.Li
 		Error()
 }
 
-// Patch applies the patch and returns the patched gateway.
+// Patch applies the patch and returns the patched gateway-controller.
 func (c *gateways) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Gateway, err error) {
 	result = &v1alpha1.Gateway{}
 	err = c.client.Patch(pt).

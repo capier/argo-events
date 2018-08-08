@@ -14,19 +14,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// the context of an operation on a gateway.
-// the gateway-controller creates this context each time it picks a Gateway off its queue.
+// the context of an operation on a gateway-controller.
+// the gateway-controller-controller creates this context each time it picks a Gateway off its queue.
 type gwOperationCtx struct {
-	// gw is the gateway object
+	// gw is the gateway-controller object
 	gw *v1alpha1.Gateway
 
-	// updated indicates whether the gateway object was updated and needs to be persisted back to k8
+	// updated indicates whether the gateway-controller object was updated and needs to be persisted back to k8
 	updated bool
 
-	// log is the logger for a gateway
+	// log is the logger for a gateway-controller
 	log zlog.Logger
 
-	// reference to the gateway-controller
+	// reference to the gateway-controller-controller
 	controller *GatewayController
 
 	// kubernetes clientset
@@ -45,9 +45,9 @@ func newGatewayOperationCtx(gw *v1alpha1.Gateway, controller *GatewayController,
 }
 
 func (gwc *gwOperationCtx) operate() error {
-	gwc.log.Info().Str("name", gwc.gw.Name).Msg("Operating on gateway")
+	gwc.log.Info().Str("name", gwc.gw.Name).Msg("Operating on gateway-controller")
 	gatewayClient := gwc.controller.gatewayClientset.ArgoprojV1alpha1().Gateways(gwc.gw.Namespace)
-	// operate on gateway only if it in new state
+	// operate on gateway-controller only if it in new state
 
 	switch gwc.gw.Status {
 	case v1alpha1.NodePhaseNew:
@@ -80,14 +80,14 @@ func (gwc *gwOperationCtx) operate() error {
 
 		_, err := gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Create(gatewayDeployment)
 		if err != nil {
-			gwc.log.Error().Str("gateway-name", gwc.gw.Name).Err(err).Msg("Error deploying gateway")
+			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Err(err).Msg("Error deploying gateway-controller")
 			gwc.gw.Status = v1alpha1.NodePhaseError
 		} else {
 			gwc.gw.Status = v1alpha1.NodePhaseRunning
 		}
 		err = gwc.reapplyUpdate(gatewayClient)
 		if err != nil {
-			gwc.log.Error().Str("gateway-name", gwc.gw.Name).Msg("failed to update gateway")
+			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Msg("failed to update gateway-controller")
 			return err
 		}
 		return nil
@@ -95,7 +95,7 @@ func (gwc *gwOperationCtx) operate() error {
 	case v1alpha1.NodePhaseError:
 		gdeployment, err := gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Get(gwc.gw.Name, metav1.GetOptions{})
 		if err != nil {
-			gwc.log.Error().Str("gateway-name", gwc.gw.Name).Err(err).Msg("Error occurred retrieving gateway deployment")
+			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Err(err).Msg("Error occurred retrieving gateway-controller deployment")
 			return err
 		}
 
@@ -103,7 +103,7 @@ func (gwc *gwOperationCtx) operate() error {
 		_, err = gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Update(gdeployment)
 
 		if err != nil {
-			gwc.log.Error().Str("gateway-name", gwc.gw.Name).Err(err).Msg("Error occurred updating gateway deployment")
+			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Err(err).Msg("Error occurred updating gateway-controller deployment")
 			return err
 		}
 
@@ -111,7 +111,7 @@ func (gwc *gwOperationCtx) operate() error {
 		gwc.gw.Status = v1alpha1.NodePhaseRunning
 		err = gwc.reapplyUpdate(gatewayClient)
 		if err != nil {
-			gwc.log.Error().Str("gateway-name", gwc.gw.Name).Msg("failed to update gateway")
+			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Msg("failed to update gateway-controller")
 			return err
 		}
 		return nil
@@ -120,7 +120,7 @@ func (gwc *gwOperationCtx) operate() error {
 		// Gateway is already running.
 		gwc.log.Warn().Str("name", gwc.gw.Name).Msg("Gateway is already running")
 	default:
-		gwc.log.Panic().Str("name", gwc.gw.Name).Str("phase", string(gwc.gw.Status)).Msg("Unknown gateway phase.")
+		gwc.log.Panic().Str("name", gwc.gw.Name).Str("phase", string(gwc.gw.Status)).Msg("Unknown gateway-controller phase.")
 	}
 	return nil
 }

@@ -40,7 +40,7 @@ func (c *GatewayController) instanceIDReq() labels.Requirement {
 	return *instanceIDReq
 }
 
-// The gateway informer adds new Gateways to the gateway-controller's queue based on Add, Update, and Delete Event Handlers for the Gateway Resources
+// The gateway-controller informer adds new Gateways to the gateway-controller-controller's queue based on Add, Update, and Delete Event Handlers for the Gateway Resources
 func (c *GatewayController) newGatewayInformer() cache.SharedIndexInformer {
 	gatewayInformerFactory := gatewayinformers.NewFilteredSharedInformerFactory(
 		c.gatewayClientset,

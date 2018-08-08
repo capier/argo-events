@@ -2,7 +2,7 @@ package v1alpha1
 
 import "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// Gateway is the definition of a gateway resource
+// Gateway is the definition of a gateway-controller resource
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -21,7 +21,7 @@ type GatewayList struct {
 	Items       []Gateway `json:"items" protobuf:"bytes,2,opt,name=items"`
 }
 
-// GatewaySpec represents gateway specifications
+// GatewaySpec represents gateway-controller specifications
 type GatewaySpec struct {
 	Image     string `json:"image" protobuf:"bytes,1,opt,name=image"`
 	Command   string `json:"command" protobuf:"bytes,2,opt,name=command"`
@@ -39,17 +39,17 @@ const (
 	NodePhaseNew     NodePhase = ""        // the node is new
 )
 
-// SensorStatus contains information about the status of a gateway.
+// SensorStatus contains information about the status of a gateway-controller.
 type GatewayStatus struct {
-	// Phase is the high-level summary of the gateway
+	// Phase is the high-level summary of the gateway-controller
 	Phase NodePhase `json:"phase" protobuf:"bytes,1,opt,name=phase"`
 
-	// StartedAt is the time at which this gateway was initiated
+	// StartedAt is the time at which this gateway-controller was initiated
 	StartedAt v1.Time `json:"startedAt,omitempty" protobuf:"bytes,2,opt,name=startedAt"`
 
-	// CompletedAt is the time at which this gateway was completed
+	// CompletedAt is the time at which this gateway-controller was completed
 	CompletedAt v1.Time `json:"completedAt,omitempty" protobuf:"bytes,3,opt,name=completedAt"`
 
-	// Message is a human readable string indicating details about a gateway in its phase
+	// Message is a human readable string indicating details about a gateway-controller in its phase
 	Message string `json:"message,omitempty" protobuf:"bytes,4,opt,name=message"`
 }

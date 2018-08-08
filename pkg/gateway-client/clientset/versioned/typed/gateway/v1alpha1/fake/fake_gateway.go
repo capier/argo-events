@@ -37,7 +37,7 @@ var gatewaysResource = schema.GroupVersionResource{Group: "argoproj.io", Version
 
 var gatewaysKind = schema.GroupVersionKind{Group: "argoproj.io", Version: "v1alpha1", Kind: "Gateway"}
 
-// Get takes name of the gateway, and returns the corresponding gateway object, and an error if there is any.
+// Get takes name of the gateway-controller, and returns the corresponding gateway-controller object, and an error if there is any.
 func (c *FakeGateways) Get(name string, options v1.GetOptions) (result *v1alpha1.Gateway, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(gatewaysResource, c.ns, name), &v1alpha1.Gateway{})
@@ -77,7 +77,7 @@ func (c *FakeGateways) Watch(opts v1.ListOptions) (watch.Interface, error) {
 
 }
 
-// Create takes the representation of a gateway and creates it.  Returns the server's representation of the gateway, and an error, if there is any.
+// Create takes the representation of a gateway-controller and creates it.  Returns the server's representation of the gateway-controller, and an error, if there is any.
 func (c *FakeGateways) Create(gateway *v1alpha1.Gateway) (result *v1alpha1.Gateway, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(gatewaysResource, c.ns, gateway), &v1alpha1.Gateway{})
@@ -88,7 +88,7 @@ func (c *FakeGateways) Create(gateway *v1alpha1.Gateway) (result *v1alpha1.Gatew
 	return obj.(*v1alpha1.Gateway), err
 }
 
-// Update takes the representation of a gateway and updates it. Returns the server's representation of the gateway, and an error, if there is any.
+// Update takes the representation of a gateway-controller and updates it. Returns the server's representation of the gateway-controller, and an error, if there is any.
 func (c *FakeGateways) Update(gateway *v1alpha1.Gateway) (result *v1alpha1.Gateway, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(gatewaysResource, c.ns, gateway), &v1alpha1.Gateway{})
@@ -99,7 +99,7 @@ func (c *FakeGateways) Update(gateway *v1alpha1.Gateway) (result *v1alpha1.Gatew
 	return obj.(*v1alpha1.Gateway), err
 }
 
-// Delete takes name of the gateway and deletes it. Returns an error if one occurs.
+// Delete takes name of the gateway-controller and deletes it. Returns an error if one occurs.
 func (c *FakeGateways) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(gatewaysResource, c.ns, name), &v1alpha1.Gateway{})
@@ -115,7 +115,7 @@ func (c *FakeGateways) DeleteCollection(options *v1.DeleteOptions, listOptions v
 	return err
 }
 
-// Patch applies the patch and returns the patched gateway.
+// Patch applies the patch and returns the patched gateway-controller.
 func (c *FakeGateways) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Gateway, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(gatewaysResource, c.ns, name, data, subresources...), &v1alpha1.Gateway{})

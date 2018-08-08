@@ -59,20 +59,20 @@ const (
 
 // GATEWAY CONTROLLER CONSTANTS
 const (
-	// DefaultGatewayControllerDeploymentName is the default deployment name of the gateway-controller
-	DefaultGatewayControllerDeploymentName = "gateway-controller"
+	// DefaultGatewayControllerDeploymentName is the default deployment name of the gateway-controller-controller
+	DefaultGatewayControllerDeploymentName = "gateway-controller-controller"
 
-	// GatewayControllerConfigMapKey is the key in the configmap to retrieve gateway configuration from.
+	// GatewayControllerConfigMapKey is the key in the configmap to retrieve gateway-controller configuration from.
 	// Content encoding is expected to be YAML.
 	GatewayControllerConfigMapKey = "config"
 
-	//LabelKeyGatewayControllerInstanceID is the label which allows to separate application among multiple running gateway controllers.
-	LabelKeyGatewayControllerInstanceID = gateway.FullName + "/gateway-controller-instanceid"
+	//LabelKeyGatewayControllerInstanceID is the label which allows to separate application among multiple running gateway-controller controllers.
+	LabelKeyGatewayControllerInstanceID = gateway.FullName + "/gateway-controller-controller-instanceid"
 
-	// GatewayLabelKeyPhase is a label applied to gateways to indicate the current phase of the gateway (for filtering purposes)
+	// GatewayLabelKeyPhase is a label applied to gateways to indicate the current phase of the gateway-controller (for filtering purposes)
 	GatewayLabelKeyPhase = gateway.FullName + "/phase"
 
-	// GatewayEnvVarConfigMap is the name of the configmap to use for the gateway-controller
+	// GatewayEnvVarConfigMap is the name of the configmap to use for the gateway-controller-controller
 	GatewayEnvVarConfigMap = "GATEWAY_CONFIG_MAP"
 )
 
@@ -90,4 +90,10 @@ const (
 
 	// EventTypeVersion is the event version
 	EventTypeVersion = "EVENT_TYPE_VERSION"
+)
+
+// Transformer constants
+const(
+	// GatewayName is name of the gateway
+	GatewayName = "GATEWAY_NAME"
 )

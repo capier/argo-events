@@ -37,23 +37,23 @@ const (
 	gatewayResyncPeriod = 20 * time.Minute
 )
 
-// GatewayControllerConfig contain the configuration settings for the gateway-controller
+// GatewayControllerConfig contain the configuration settings for the gateway-controller-controller
 type GatewayControllerConfig struct {
-	// InstanceID is a label selector to limit the gateway-controller's watch of gateway jobs to a specific instance.
-	// If omitted, the gateway-controller watches gateways that *are not* labeled with an instance id.
+	// InstanceID is a label selector to limit the gateway-controller-controller's watch of gateway-controller jobs to a specific instance.
+	// If omitted, the gateway-controller-controller watches gateways that *are not* labeled with an instance id.
 	InstanceID string `json:"instanceID,omitempty"`
 
-	// Namespace is a label selector filter to limit gateway-controller's watch to specific namespace
+	// Namespace is a label selector filter to limit gateway-controller-controller's watch to specific namespace
 	Namespace string `json:"namespace"`
 }
 
-// gatewayController listens for new gateways and hands off handling of each gateway on the queue to the operator
+// gatewayController listens for new gateways and hands off handling of each gateway-controller on the queue to the operator
 type GatewayController struct {
 	// ConfigMap is the name of the config map in which to derive configuration of the contoller
 	ConfigMap string
 	// namespace for the config map
 	ConfigMapNS string
-	// Config is the gateway gateway-controller's configuration
+	// Config is the gateway-controller gateway-controller-controller's configuration
 	Config GatewayControllerConfig
 
 	// kubernetes config and apis
@@ -61,7 +61,7 @@ type GatewayController struct {
 	kubeClientset   kubernetes.Interface
 	gatewayClientset clientset.Interface
 
-	// gateway informer and queue
+	// gateway-controller informer and queue
 	informer cache.SharedIndexInformer
 	queue    workqueue.RateLimitingInterface
 }
@@ -72,7 +72,7 @@ func NewGatewayController(rest *rest.Config, configMap string) *GatewayControlle
 		ConfigMap:       configMap,
 		kubeConfig:      rest,
 		kubeClientset:   kubernetes.NewForConfigOrDie(rest),
-		clientset: clientset.NewForConfigOrDie(rest),
+		gatewayClientset: clientset.NewForConfigOrDie(rest),
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 	}
 }
@@ -87,18 +87,18 @@ func (c *GatewayController) processNextItem() bool {
 
 	obj, exists, err := c.informer.GetIndexer().GetByKey(key.(string))
 	if err != nil {
-		log.Warnf("failed to get gateway '%s' from informer index: %+v", key, err)
+		log.Warnf("failed to get gateway-controller '%s' from informer index: %+v", key, err)
 		return true
 	}
 
 	if !exists {
-		// this happens after gateway was deleted, but work queue still had entry in it
+		// this happens after gateway-controller was deleted, but work queue still had entry in it
 		return true
 	}
 
 	gateway, ok := obj.(*v1alpha1.Gateway)
 	if !ok {
-		log.Warnf("key '%s' in index is not a gateway", key)
+		log.Warnf("key '%s' in index is not a gateway-controller", key)
 		return true
 	}
 
@@ -106,12 +106,12 @@ func (c *GatewayController) processNextItem() bool {
 
 	err = c.handleErr(ctx.operate(), key)
 	if err != nil {
-		// now let's escalate the gateway
+		// now let's escalate the gateway-controller
 		// the context should have the most up-to-date version
-		log.Infof("escalating gateway to level %s via %s message", ctx.s.Spec.Escalation.Level, ctx.s.Spec.Escalation.Message.Stream.Type)
+		log.Infof("escalating gateway-controller to level %s via %s message", ctx.s.Spec.Escalation.Level, ctx.s.Spec.Escalation.Message.Stream.Type)
 		err := sendMessage(&ctx.s.Spec.Escalation.Message)
 		if err != nil {
-			log.Panicf("failed escalating gateway '%s'", key)
+			log.Panicf("failed escalating gateway-controller '%s'", key)
 		}
 	}
 
@@ -132,7 +132,7 @@ func (c *GatewayController) handleErr(err error, key interface{}) error {
 	// requeues will happen very quickly even after a signal pod goes down
 	// we want to give the signal pod a chance to come back up so we give a genorous number of retries
 	if c.queue.NumRequeues(key) < 20 {
-		log.Errorf("Error syncing gateway '%v': %v", key, err)
+		log.Errorf("Error syncing gateway-controller '%v': %v", key, err)
 
 		// Re-enqueue the key rate limited. This key will be processed later again.
 		c.queue.AddRateLimited(key)
@@ -141,14 +141,14 @@ func (c *GatewayController) handleErr(err error, key interface{}) error {
 	return errors.New("exceeded max requeues")
 }
 
-// Run executes the gateway-controller
+// Run executes the gateway-controller-controller
 func (c *GatewayController) Run(ctx context.Context, ssThreads, signalThreads int) {
 	defer c.queue.ShutDown()
 
-	log.Infof("gateway gateway-controller (version: %s) (instance: %s) starting", base.GetVersion(), c.Config.InstanceID)
+	log.Infof("gateway-controller gateway-controller-controller (version: %s) (instance: %s) starting", base.GetVersion(), c.Config.InstanceID)
 	_, err := c.watchControllerConfigMap(ctx)
 	if err != nil {
-		log.Errorf("failed to register watch for gateway-controller config map: %v", err)
+		log.Errorf("failed to register watch for gateway-controller-controller config map: %v", err)
 		return
 	}
 

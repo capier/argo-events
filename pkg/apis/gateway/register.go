@@ -22,7 +22,7 @@ const (
 
 	// Sensor constants
 	Kind     string = "Gateway"
-	Singular string = "gateway"
-	Plural   string = "gateway"
+	Singular string = "gateway-controller"
+	Plural   string = "gateway-controller"
 	FullName string = Plural + "." + Group
 )
