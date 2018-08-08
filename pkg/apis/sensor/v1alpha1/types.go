@@ -23,18 +23,7 @@ import (
 	"github.com/minio/minio-go"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-// SignalType is the type of the signal
-type SignalType string
-
-// possible types of signals or inputs
-const (
-	SignalTypeStream   SignalType = "Stream"
-	SignalTypeArtifact SignalType = "Artifact"
-	SignalTypeCalendar SignalType = "Calendar"
-	SignalTypeResource SignalType = "Resource"
-	SignalTypeWebhook  SignalType = "Webhook"
+	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // NodeType is the type of a node
@@ -105,49 +94,8 @@ type Signal struct {
 	// and proper escalations should proceed.
 	Deadline int64 `json:"deadline,omitempty" protobuf:"bytes,2,opt,name=deadline"`
 
-	// Stream defines a message stream dependency
-	Stream *Stream `json:"stream,omitempty" protobuf:"bytes,3,opt,name=stream"`
-
-	// artifact defines an external file dependency
-	Artifact *ArtifactSignal `json:"artifact,omitempty" protobuf:"bytes,4,opt,name=artifact"`
-
-	// Calendar defines a time based dependency
-	Calendar *CalendarSignal `json:"calendar,omitempty" protobuf:"bytes,5,opt,name=calendar"`
-
-	// Resource defines a dependency on a kubernetes resource -- this can be a pod, deployment or custom resource
-	Resource *ResourceSignal `json:"resource,omitempty" protobuf:"bytes,6,opt,name=resource"`
-
-	// Webhook defines a HTTP notification dependency
-	Webhook *WebhookSignal `json:"webhook,omitempty" protobuf:"bytes,7,opt,name=webhook"`
-
 	// Filters and rules governing tolerations of success and constraints on the context and data of an event
 	Filters SignalFilter `json:"filters,omitempty" protobuf:"bytes,8,opt,name=filters"`
-}
-
-// ArtifactSignal describes an external object dependency
-type ArtifactSignal struct {
-	ArtifactLocation `json:",inline" protobuf:"bytes,2,opt,name=artifactLocation"`
-
-	// Target is the stream to listen for artifact notifications
-	Target Stream `json:"target" protobuf:"bytes,1,opt,name=target"`
-}
-
-// CalendarSignal describes a time based dependency. One of the fields (schedule, interval, or recurrence) must be passed.
-// Schedule takes precedence over interval; interval takes precedence over recurrence
-type CalendarSignal struct {
-	// Schedule is a cron-like expression. For reference, see: https://en.wikipedia.org/wiki/Cron
-	Schedule string `json:"schedule" protobuf:"bytes,1,opt,name=schedule"`
-
-	// Interval is a string that describes an interval duration, e.g. 1s, 30m, 2h...
-	Interval string `json:"interval" protobuf:"bytes,2,opt,name=interval"`
-
-	// List of RRULE, RDATE and EXDATE lines for a recurring event, as specified in RFC5545.
-	// RRULE is a recurrence rule which defines a repeating pattern for recurring events.
-	// RDATE defines the list of DATE-TIME values for recurring events.
-	// EXDATE defines the list of DATE-TIME exceptions for recurring events.
-	// the combination of these rules and dates combine to form a set of date times.
-	// NOTE: functionality currently only supports EXDATEs, but in the future could be expanded.
-	Recurrence []string `json:"recurrence" protobuf:"bytes,3,rep,name=recurrence"`
 }
 
 // GroupVersionKind unambiguously identifies a kind.  It doesn't anonymously include GroupVersion
@@ -171,7 +119,7 @@ type SignalFilter struct {
 	Time *TimeFilter `json:"time,omitempty" protobuf:"bytes,1,opt,name=time"`
 
 	// Context filter constraints
-	Context *EventContext `json:"context,omitempty" protobuf:"bytes,2,opt,name=context"`
+	Context *event.EventContext `json:"context,omitempty" protobuf:"bytes,2,opt,name=context"`
 
 	// Data filter constraints
 	Data []*DataFilter `json:"data,omitempty" protobuf:"bytes,3,rep,name=data"`
@@ -235,7 +183,7 @@ type Trigger struct {
 	Resource *ResourceObject `json:"resource,omitempty" protobuf:"bytes,2,opt,name=resource"`
 
 	// Message describes a message that will be sent on a queue
-	Message *Message `json:"message,omitempty" protobuf:"bytes,3,opt,name=message"`
+	Message string `json:"message,omitempty" protobuf:"bytes,3,opt,name=message"`
 
 	// RetryStrategy is the strategy to retry a trigger if it fails
 	RetryStrategy *RetryStrategy `json:"retryStrategy" protobuf:"bytes,4,opt,name=replyStrategy"`
@@ -291,18 +239,6 @@ type ResourceObject struct {
 	Parameters []ResourceParameter `json:"parameters" protobuf:"bytes,4,rep,name=parameters"`
 }
 
-// Stream describes a queue stream resource
-type Stream struct {
-	// Type of the stream resource
-	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
-
-	// URL is the exposed endpoint for client connections to this service
-	URL string `json:"url" protobuf:"bytes,2,opt,name=url"`
-
-	// Attributes contains additional fields specific to each service implementation
-	Attributes map[string]string `json:"attributes,omitempty" protobuf:"bytes,3,rep,name=attributes"`
-}
-
 // WebhookSignal is a general purpose REST API
 // Due to https://github.com/argoproj/argo-events/issues/59 - the port is no longer part of the api
 type WebhookSignal struct {
@@ -314,13 +250,6 @@ type WebhookSignal struct {
 	Method string `json:"method" protobuf:"bytes,2,opt,name=method"`
 }
 
-// Message represents a message on a queue
-type Message struct {
-	Body string `json:"body" protobuf:"bytes,1,opt,name=body"`
-
-	// Stream descibes queue resources to send the message on
-	Stream Stream `json:"stream,omitempty" protobuf:"bytes,2,opt,name=stream"`
-}
 
 // RetryStrategy represents a strategy for retrying operations
 // TODO: implement me
@@ -335,7 +264,7 @@ type EscalationPolicy struct {
 	Level string `json:"level" protobuf:"bytes,1,opt,name=level"`
 
 	// need someway to progressively get more serious notifications
-	Message Message `json:"message" protobuf:"bytes,2,opt,name=message"`
+	Message string `json:"message" protobuf:"bytes,2,opt,name=message"`
 }
 
 // SensorStatus contains information about the status of a sensor.
@@ -391,57 +320,8 @@ type NodeStatus struct {
 
 // EventWrapper wraps an event with an additional flag to check if we processed this event already
 type EventWrapper struct {
-	Event Event `json:"event" protobuf:"bytes,1,opt,name=event"`
+	Event event.Event `json:"event" protobuf:"bytes,1,opt,name=event"`
 	Seen  bool  `json:"seen" protobuf:"bytes,2,opt,name=seen"`
-}
-
-// Event is a data record expressing an occurrence and its context.
-// Adheres to the CloudEvents v0.1 specification
-type Event struct {
-	Context EventContext `json:"context" protobuf:"bytes,1,opt,name=context"`
-	Data    []byte       `json:"data" protobuf:"bytes,2,opt,name=data"`
-}
-
-// EventContext contains metadata that provides circumstantial information about the occurence.
-type EventContext struct {
-	// The type of occurrence which has happened. Often this attribute is used for
-	// routing, observability, policy enforcement, etc.
-	// should be prefixed with a reverse-DNS name. The prefixed domain dictates
-	// the organization which defines the semantics of this event type. ex: com.github.pull.create
-	EventType string `json:"eventType" protobuf:"bytes,1,opt,name=eventType"`
-
-	// The version of the eventType. Enables the interpretation of data by eventual consumers,
-	// requires the consumer to be knowledgeable about the producer.
-	EventTypeVersion string `json:"eventTypeVersion" protobuf:"bytes,2,opt,name=eventTypeVersion"`
-
-	// The version of the CloudEvents specification which the event uses.
-	// Enables the intepretation of the context.
-	CloudEventsVersion string `json:"cloudEventsVersion" protobuf:"bytes,3,opt,name=cloudEventsVersion"`
-
-	// This describes the event producer.
-	Source *URI `json:"source" protobuf:"bytes,4,opt,name=source"`
-
-	// ID of the event. The semantics are explicitly undefined to ease the implementation of producers.
-	// Enables deduplication. Must be unique within scope of producer.
-	EventID string `json:"eventID" protobuf:"bytes,5,opt,name=eventID"`
-
-	// Timestamp of when the event happened. Must adhere to format specified in RFC 3339.
-	EventTime v1.Time `json:"eventTime" protobuf:"bytes,6,opt,name=eventTime"`
-
-	// A link to the schema that the data attribute adheres to.
-	// Must adhere to the format specified in RFC 3986.
-	SchemaURL *URI `json:"schemaURL" protobuf:"bytes,7,opt,name=schemaURL"`
-
-	// Content type of the data attribute value. Enables the data attribute to carry any type of content,
-	// whereby format and encoding might differ from that of the chosen event format.
-	// For example, the data attribute may carry an XML or JSON payload and the consumer is informed
-	// by this attribute being set to "application/xml" or "application/json" respectively.
-	ContentType string `json:"contentType" protobuf:"bytes,8,opt,name=contentType"`
-
-	// This is for additional metadata and does not have a mandated structure.
-	// Enables a place for custom fields a producer or middleware might want to include and provides a place
-	// to test metadata before adding them to the CloudEvents specification.
-	Extensions map[string]string `json:"extensions,omitempty" protobuf:"bytes,9,rep,name=extensions"`
 }
 
 // URI is a Uniform Resource Identifier based on RFC 3986
@@ -510,26 +390,6 @@ type ResourceFilter struct {
 // HasLocation whether or not an artifact has a location defined
 func (a *ArtifactLocation) HasLocation() bool {
 	return a.S3 != nil || a.Inline != nil || a.File != nil || a.URL != nil
-}
-
-// GetType returns the type of this signal
-func (signal *Signal) GetType() SignalType {
-	if signal.Stream != nil {
-		return SignalTypeStream
-	}
-	if signal.Resource != nil {
-		return SignalTypeResource
-	}
-	if signal.Artifact != nil {
-		return SignalTypeArtifact
-	}
-	if signal.Calendar != nil {
-		return SignalTypeCalendar
-	}
-	if signal.Webhook != nil {
-		return SignalTypeWebhook
-	}
-	return "Unknown"
 }
 
 // IsComplete determines if the node has reached an end state

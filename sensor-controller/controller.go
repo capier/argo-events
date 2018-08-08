@@ -66,9 +66,6 @@ type SensorController struct {
 	informer cache.SharedIndexInformer
 	queue    workqueue.RateLimitingInterface
 
-	// enables access to signals micro services
-	signalMgr *SignalManager
-
 	// inventory for all types of signal implementations
 	signalMu      sync.Mutex
 }
@@ -81,7 +78,6 @@ func NewSensorController(rest *rest.Config, configMap string, signalMgr *SignalM
 		kubeClientset:   kubernetes.NewForConfigOrDie(rest),
 		sensorClientset: sensorclientset.NewForConfigOrDie(rest),
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		signalMgr:       signalMgr,
 	}
 }
 

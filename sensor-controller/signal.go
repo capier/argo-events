@@ -24,7 +24,6 @@ import (
 
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
-	"github.com/argoproj/argo-events/sdk"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -90,22 +89,6 @@ func (soc *sOperationCtx) signalIsPresent(nodeID string) bool {
 	_, ok := soc.controller.signalStreams[nodeID]
 	soc.controller.signalMu.Unlock()
 	return ok
-}
-
-// resolveClient is a helper method to find the correct SignalClient for this signal
-func (soc *sOperationCtx) resolveClient(signal *v1alpha1.Signal) (sdk.SignalClient, error) {
-	var typ string
-	switch signal.GetType() {
-	case v1alpha1.SignalTypeStream:
-		typ = signal.Stream.Type
-	default:
-		typ = string(signal.GetType())
-	}
-	client, err := soc.controller.signalMgr.Dispense(typ)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
 }
 
 // adds a new signal to the sensor-controller's signals

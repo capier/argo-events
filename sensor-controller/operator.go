@@ -23,8 +23,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	client "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
@@ -81,6 +82,42 @@ func (soc *sOperationCtx) operate() error {
 			soc.markSensorPhase(v1alpha1.NodePhaseError, true, err.Error())
 			return nil
 		}
+		// Create a ClusterIP service to expose sensor in cluster
+		// Todo: Make sensor as subscriber to future Pub-Sub system.
+		// For now, sensor will receive event notifications through http server.
+		// And it will communicate the updates back to sensor controller.
+		sensorDeployment := &appv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: soc.s.Name,
+				Namespace: soc.s.Namespace,
+				// does this required?
+				Labels: map[string]string{
+					"name": soc.s.Name,
+				},
+			},
+			Spec: appv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: soc.s.Name,
+								Image: common.SensorImage,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Create sensor deployment
+		_, err = soc.controller.kubeClientset.AppsV1().Deployments(soc.s.Namespace).Create(sensorDeployment)
+		if err != nil {
+			soc.log.Errorf("failed to create sensor deployment. Err: %+v", err)
+			return err
+		}
+
+		// Create sensor service
+
 	}
 
 	// process the sensor's signals

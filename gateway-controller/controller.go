@@ -149,7 +149,7 @@ func (c *GatewayController) Run(ctx context.Context, ssThreads, signalThreads in
 		return
 	}
 
-	c.informer = c.newgatewayInformer()
+	c.informer = c.newGatewayInformer()
 	go c.informer.Run(ctx.Done())
 
 	if !cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced) {

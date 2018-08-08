@@ -55,6 +55,9 @@ const (
 
 	// WebhookServiceTargetPort is the port of the targeted job
 	WebhookServiceTargetPort = 9000
+
+	// Sensor image is the image used to deploy sensor.
+	SensorImage = "argoproj/sensor"
 )
 
 // GATEWAY CONTROLLER CONSTANTS

@@ -14,47 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package transform
+package event
 
 import (
-	zlog "github.com/rs/zerolog"
-	"k8s.io/client-go/kubernetes"
-	"os"
 	"time"
 )
 
-type EventConfig struct {
-	// EventType is type of the event
-	EventType string
-
-	// EventTypeVersion is the version of the `eventType`
-	EventTypeVersion string
-
-	// Source
-	Source string
-
-	// Sensor
-	Sensor string
-}
-
-type eOperationCtx struct {
-	// Namespace is namespace where gateway-controller is deployed
-	Namespace string
-
-	// Event logger
-	log zlog.Logger
-
-	// Event configuration
-	Config EventConfig
-
-	// Kubernetes clientset
-	kubeClientset kubernetes.Interface
-}
-
 // Event contains context about event and payload
 type Event struct {
-	ctx     EventContext
-	payload []byte
+	Ctx     EventContext
+	Payload []byte
 }
 
 // EventContext contains standard metadata about an event.
@@ -78,12 +47,4 @@ type EventContext struct {
 	Source string `json:"source"`
 	// Additional metadata without a well-defined structure.
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
-}
-
-func NewEventOperationContext(name string, namespace string, clientset kubernetes.Interface) *eOperationCtx {
-	return &eOperationCtx{
-		Namespace:     namespace,
-		kubeClientset: clientset,
-		log:           zlog.New(os.Stdout).With().Str("gateway-controller-name", name).Logger(),
-	}
 }
