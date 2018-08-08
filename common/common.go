@@ -75,3 +75,19 @@ const (
 	// GatewayEnvVarConfigMap is the name of the configmap to use for the gateway-controller
 	GatewayEnvVarConfigMap = "GATEWAY_CONFIG_MAP"
 )
+
+// CloudEvents constants
+const (
+	// CloudEventsVersion is the version of the CloudEvents spec targeted
+	// by this library.
+	CloudEventsVersion = "0.1"
+
+	// HeaderContentType is the standard HTTP header "Content-Type"
+	HeaderContentType = "Content-Type"
+
+	// EventType is the type of event
+	EventType = "EVENT_TYPE"
+
+	// EventTypeVersion is the event version
+	EventTypeVersion = "EVENT_TYPE_VERSION"
+)
