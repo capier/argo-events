@@ -58,6 +58,10 @@ const (
 
 	// Sensor image is the image used to deploy sensor.
 	SensorImage = "argoproj/sensor"
+
+	// Sensor service port
+	SensorServicePort = 9300
+
 )
 
 // GATEWAY CONTROLLER CONSTANTS

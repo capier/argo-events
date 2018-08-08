@@ -29,6 +29,7 @@ import (
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	client "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // the context of an operation on a sensor.
@@ -45,6 +46,9 @@ type sOperationCtx struct {
 
 	// reference to the sensor sensor-controller
 	controller *SensorController
+
+	// Communication between sensor controller and sensor pod
+	eventCh   *chan string
 }
 
 // newSensorOperationCtx creates and initializes a new sOperationCtx object
@@ -90,7 +94,6 @@ func (soc *sOperationCtx) operate() error {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: soc.s.Name,
 				Namespace: soc.s.Namespace,
-				// does this required?
 				Labels: map[string]string{
 					"name": soc.s.Name,
 				},
@@ -117,7 +120,32 @@ func (soc *sOperationCtx) operate() error {
 		}
 
 		// Create sensor service
+		sensorSvc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: soc.s.Name + "-svc",
+				Namespace: soc.s.Namespace,
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{
+						Port: common.SensorServicePort,
+					},
+					{
+						TargetPort: intstr.FromInt(common.SensorServicePort),
+					},
+				},
+				Type: corev1.ServiceTypeClusterIP,
+				Selector: map[string]string{
+					"name": soc.s.Name,
+				},
+			},
+		}
 
+		_, err = soc.controller.kubeClientset.CoreV1().Services(soc.s.Namespace).Create(sensorSvc)
+		if err != nil {
+			soc.log.Errorf("failed to create sensor service. Err: %+v", err)
+			return err
+		}
 	}
 
 	// process the sensor's signals
