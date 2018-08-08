@@ -27,6 +27,7 @@ type GatewaySpec struct {
 	Command   string `json:"command" protobuf:"bytes,2,opt,name=command"`
 	ConfigMap string `json:"config_map" protobuf:"bytes,3,opt,name=configmap"`
 	Secret    string `json:"secret" protobuf:"bytes,4,opt,name=secret"`
+	Type      string `json:"type" protobuf:"bytes,5,opt,name=type"`
 }
 
 // NodePhase is the label for the condition of a node

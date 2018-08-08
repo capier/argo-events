@@ -87,7 +87,7 @@ func (s gatewayNamespaceLister) Get(name string) (*v1alpha1.Gateway, error) {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("gateway-controller"), name)
+		return nil, errors.NewNotFound(v1alpha1.Resource("gateway"), name)
 	}
 	return obj.(*v1alpha1.Gateway), nil
 }

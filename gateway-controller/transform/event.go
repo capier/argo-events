@@ -29,6 +29,9 @@ type EventConfig struct {
 
 	// EventTypeVersion is the version of the `eventType`
 	EventTypeVersion string
+
+	// Source
+	Source string
 }
 
 type eOperationCtx struct {

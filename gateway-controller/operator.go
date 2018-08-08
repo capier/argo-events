@@ -57,6 +57,9 @@ func (gwc *gwOperationCtx) operate() error {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      gwc.gw.Name + "-deployment",
 				Namespace: gwc.gw.Namespace,
+				Labels: map[string]string{
+					"gateway-name": gwc.gw.Name,
+				},
 			},
 			Spec: k8v1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -70,7 +73,25 @@ func (gwc *gwOperationCtx) operate() error {
 							{
 								Name:            "event-transformer",
 								ImagePullPolicy: corev1.PullIfNotPresent,
-								Image:           "my-transform-image",
+								Image:           common.GatewayEventTransformerImage,
+								Env: []corev1.EnvVar{
+									{
+										Name: common.GatewayName,
+										Value: gwc.gw.Name,
+									},
+									{
+										Name: common.EnvVarNamespace,
+										Value: gwc.gw.Namespace,
+									},
+									{
+										Name: common.GatewayEnvVarConfigMap,
+										Value: gwc.gw.Spec.ConfigMap,
+									},
+									{
+										Name: common.Source,
+										Value: gwc.gw.Name,
+									},
+								},
 							},
 						},
 					},

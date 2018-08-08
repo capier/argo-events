@@ -10,7 +10,7 @@ import (
 )
 
 // Transform request transforms http request payload into CloudEvent
-func (eoc *eOperationCtx) TransformRequest(source string, r *http.Request) (*Event, error) {
+func (eoc *eOperationCtx) transform(r *http.Request) (*Event, error) {
 	// Generate event id
 	eventId := suuid.Must(suuid.NewV4())
 	payload, err := ioutil.ReadAll(r.Body)
@@ -28,10 +28,14 @@ func (eoc *eOperationCtx) TransformRequest(source string, r *http.Request) (*Eve
 			EventTime:          time.Now(),
 			EventType:          eoc.Config.EventType,
 			EventTypeVersion:   eoc.Config.EventTypeVersion,
-			Source:             source,
+			Source:             eoc.Config.Source,
 		},
 		payload: payload,
 	}
 
 	return ce, nil
+}
+
+func (eoc *eOperationCtx) HandleTransformRequest(w http.ResponseWriter, r *http.Request) {
+	eoc.transform(r)
 }

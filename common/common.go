@@ -74,6 +74,8 @@ const (
 
 	// GatewayEnvVarConfigMap is the name of the configmap to use for the gateway-controller-controller
 	GatewayEnvVarConfigMap = "GATEWAY_CONFIG_MAP"
+
+	GatewayEventTransformerImage = "argoproj/event-transformer"
 )
 
 // CloudEvents constants
@@ -96,4 +98,10 @@ const (
 const(
 	// GatewayName is name of the gateway
 	GatewayName = "GATEWAY_NAME"
+
+	// Source
+	Source = "SOURCE"
+
+	// Port is http server port where transformer service is running
+	Port = 9300
 )
