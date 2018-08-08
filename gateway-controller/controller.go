@@ -45,6 +45,9 @@ type GatewayControllerConfig struct {
 
 	// Namespace is a label selector filter to limit gateway-controller-controller's watch to specific namespace
 	Namespace string `json:"namespace"`
+
+	// Sensor is the name of sensor to which event should be sent
+	Sensor string `json:"sensor"`
 }
 
 // gatewayController listens for new gateways and hands off handling of each gateway-controller on the queue to the operator
@@ -106,13 +109,7 @@ func (c *GatewayController) processNextItem() bool {
 
 	err = c.handleErr(ctx.operate(), key)
 	if err != nil {
-		// now let's escalate the gateway-controller
-		// the context should have the most up-to-date version
-		log.Infof("escalating gateway-controller to level %s via %s message", ctx.s.Spec.Escalation.Level, ctx.s.Spec.Escalation.Message.Stream.Type)
-		err := sendMessage(&ctx.s.Spec.Escalation.Message)
-		if err != nil {
-			log.Panicf("failed escalating gateway-controller '%s'", key)
-		}
+		log.Errorf("")
 	}
 
 	return true

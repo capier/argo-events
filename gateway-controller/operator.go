@@ -34,13 +34,12 @@ type gwOperationCtx struct {
 }
 
 // newGatewayOperationCtx creates and initializes a new gOperationCtx object
-func newGatewayOperationCtx(gw *v1alpha1.Gateway, controller *GatewayController, kubeClientset kubernetes.Clientset) *gwOperationCtx {
+func newGatewayOperationCtx(gw *v1alpha1.Gateway, controller *GatewayController) *gwOperationCtx {
 	return &gwOperationCtx{
 		gw:            gw.DeepCopy(),
 		updated:       false,
 		log:           zlog.New(os.Stdout).With().Str("name", gw.Name).Str("namespace", gw.Namespace).Logger(),
 		controller:    controller,
-		kubeClientset: kubeClientset,
 	}
 }
 

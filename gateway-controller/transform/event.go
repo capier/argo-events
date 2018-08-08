@@ -32,6 +32,9 @@ type EventConfig struct {
 
 	// Source
 	Source string
+
+	// Sensor
+	Sensor string
 }
 
 type eOperationCtx struct {
