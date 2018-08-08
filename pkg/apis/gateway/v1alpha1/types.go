@@ -24,8 +24,9 @@ type GatewayList struct {
 // GatewaySpec represents gateway specifications
 type GatewaySpec struct {
 	Image     string `json:"image" protobuf:"bytes,1,opt,name=image"`
-	ConfigMap string `json:"config_map" protobuf:"bytes,2,opt,name=configmap"`
-	Secret    string `json:"secret" protobuf:"bytes,3,opt,name=secret"`
+	Command   string `json:"command" protobuf:"bytes,2,opt,name=command"`
+	ConfigMap string `json:"config_map" protobuf:"bytes,3,opt,name=configmap"`
+	Secret    string `json:"secret" protobuf:"bytes,4,opt,name=secret"`
 }
 
 // NodePhase is the label for the condition of a node
