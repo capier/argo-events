@@ -129,8 +129,6 @@ func (soc *sOperationCtx) operate() error {
 				Ports: []corev1.ServicePort{
 					{
 						Port: common.SensorServicePort,
-					},
-					{
 						TargetPort: intstr.FromInt(common.SensorServicePort),
 					},
 				},

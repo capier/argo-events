@@ -97,8 +97,11 @@ const (
 	// EventType is the type of event
 	EventType = "EVENT_TYPE"
 
-	// EventTypeVersion is the event version
+	// EventTypeVersion is the event type version
 	EventTypeVersion = "EVENT_TYPE_VERSION"
+
+	// Source where the event originated from
+	EventSource = "SOURCE"
 )
 
 // Transformer constants
@@ -106,9 +109,9 @@ const(
 	// GatewayName is name of the gateway
 	GatewayName = "GATEWAY_NAME"
 
-	// Source
-	Source = "SOURCE"
+	//  TransformerPortEnvVar is the env var for http server port
+	TransformerPortEnvVar = "TRANSFORMER_PORT"
 
-	// Port is http server port where transformer service is running
-	Port = 9300
+	// TransformerPort is http server port where transformer service is running
+	TransformerPort = 9300
 )

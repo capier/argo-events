@@ -28,7 +28,8 @@ type GatewaySpec struct {
 	ConfigMap string `json:"config_map" protobuf:"bytes,3,opt,name=configmap"`
 	Secret    string `json:"secret" protobuf:"bytes,4,opt,name=secret"`
 	Type      string `json:"type" protobuf:"bytes,5,opt,name=type"`
-	Sensor    string `json:"sensor" protobuf:"bytes,6,opt,name=sensor"`
+	Service   Service   `json:"exposed" protobuf:"bytes,6,opt,name=service"`
+	Sensor    string `json:"sensor" protobuf:"bytes,7,opt,name=sensor"`
 }
 
 // NodePhase is the label for the condition of a node
@@ -54,4 +55,13 @@ type GatewayStatus struct {
 
 	// Message is a human readable string indicating details about a gateway-controller in its phase
 	Message string `json:"message,omitempty" protobuf:"bytes,4,opt,name=message"`
+}
+
+// Service exposed gateway to outside cluster or in cluster components depending on it's type.
+type Service struct {
+	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
+
+	Port int32 `json:"port" protobuf:"bytes,2,opt,name=port"`
+
+	TargetPort int `json:"target_port" protobuf:"bytes,3,opt,name=target_port"`
 }

@@ -58,6 +58,6 @@ func main() {
 		log.Fatalf("failed to register watch for store config map: %+v", err)
 	}
 
-	http.HandleFunc("/foo", eoc.HandleTransformRequest)
-	log.Fatal(http.ListenAndServe(":" + fmt.Sprintf("%s", common.Port), nil))
+	http.HandleFunc("/", eoc.HandleTransformRequest)
+	log.Fatal(http.ListenAndServe(":" + fmt.Sprintf("%s", common.TransformerPort), nil))
 }

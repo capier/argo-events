@@ -12,6 +12,8 @@ import (
 
 	"github.com/argoproj/argo-events/common"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"fmt"
 )
 
 // the context of an operation on a gateway-controller.
@@ -59,6 +61,11 @@ func (gwc *gwOperationCtx) operate() error {
 				Labels: map[string]string{
 					"gateway-name": gwc.gw.Name,
 				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Name: gwc.gw.Name,
+					},
+				},
 			},
 			Spec: k8v1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -68,6 +75,12 @@ func (gwc *gwOperationCtx) operate() error {
 								Name:            "event-processor",
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Image:           gwc.gw.Spec.Image,
+								Env: []corev1.EnvVar{
+									{
+										Name: common.TransformerPortEnvVar,
+										Value: fmt.Sprintf("%s", common.TransformerPort),
+									},
+								},
 							},
 							{
 								Name:            "event-transformer",
@@ -87,7 +100,7 @@ func (gwc *gwOperationCtx) operate() error {
 										Value: gwc.gw.Spec.ConfigMap,
 									},
 									{
-										Name: common.Source,
+										Name: common.EventSource,
 										Value: gwc.gw.Name,
 									},
 								},
@@ -104,7 +117,9 @@ func (gwc *gwOperationCtx) operate() error {
 			gwc.gw.Status = v1alpha1.NodePhaseError
 		} else {
 			gwc.gw.Status = v1alpha1.NodePhaseRunning
+			gwc.exposeGateway()
 		}
+
 		err = gwc.reapplyUpdate(gatewayClient)
 		if err != nil {
 			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Msg("failed to update gateway-controller")
@@ -113,14 +128,15 @@ func (gwc *gwOperationCtx) operate() error {
 		return nil
 
 	case v1alpha1.NodePhaseError:
-		gdeployment, err := gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Get(gwc.gw.Name, metav1.GetOptions{})
+		gDeployment, err := gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Get(gwc.gw.Name, metav1.GetOptions{})
 		if err != nil {
 			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Err(err).Msg("Error occurred retrieving gateway-controller deployment")
 			return err
 		}
 
-		gdeployment.Spec.Template.Spec.Containers[0].Image = gwc.gw.Spec.Image
-		_, err = gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Update(gdeployment)
+		// If image has been updated
+		gDeployment.Spec.Template.Spec.Containers[0].Image = gwc.gw.Spec.Image
+		_, err = gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Update(gDeployment)
 
 		if err != nil {
 			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Err(err).Msg("Error occurred updating gateway-controller deployment")
@@ -137,12 +153,47 @@ func (gwc *gwOperationCtx) operate() error {
 		return nil
 
 	case v1alpha1.NodePhaseRunning:
-		// Gateway is already running.
+		gwc.exposeGateway()
 		gwc.log.Warn().Str("name", gwc.gw.Name).Msg("Gateway is already running")
 	default:
 		gwc.log.Panic().Str("name", gwc.gw.Name).Str("phase", string(gwc.gw.Status)).Msg("Unknown gateway-controller phase.")
 	}
 	return nil
+}
+
+// Exposes gateway if configured
+func (gwc *gwOperationCtx) exposeGateway() {
+	if gwc.gw.Spec.Service.Port != 0 {
+		gatewaySvc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: gwc.gw.Name + "-svc",
+				Namespace: gwc.gw.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Name: gwc.gw.Name,
+					},
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				Selector: map[string]string{
+					"gateway-name": gwc.gw.Name,
+				},
+				Ports: []corev1.ServicePort{
+					{
+						Port: gwc.gw.Spec.Service.Port,
+						TargetPort: intstr.FromInt(gwc.gw.Spec.Service.TargetPort),
+					},
+				},
+				Type: corev1.ServiceType(gwc.gw.Spec.Service.Type),
+			},
+		}
+
+		_, err := gwc.controller.kubeClientset.CoreV1().Services(gwc.gw.Namespace).Create(gatewaySvc)
+		// Fail silently
+		if err != nil {
+			gwc.log.Error().Err(err).Msg("failed to create service for gateway deployment")
+		}
+	}
 }
 
 func (gwc *gwOperationCtx) reapplyUpdate(gatewayClient client.GatewayInterface) error {
