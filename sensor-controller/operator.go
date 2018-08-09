@@ -30,6 +30,7 @@ import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	client "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	pb "github.com/argoproj/argo-events/proto"
 )
 
 // the context of an operation on a sensor.
@@ -178,8 +179,10 @@ func (soc *sOperationCtx) operate() error {
 			// here we need to check if the sensor is repeatable, if so, we should go back to init phase for the sensor & all the nodes
 			// todo: add spec level deadlines here
 			if soc.s.Spec.Repeat {
+				soc.notifySensor(common.TriggerAndRepeat)
 				soc.reRunSensor()
 			} else {
+				soc.notifySensor(common.TriggerAndStop)
 				// Remove sensor channel from channel map
 				soc.controller.sMux.Lock()
 				delete(soc.controller.sensorChs, soc.s.Name)
@@ -193,6 +196,14 @@ func (soc *sOperationCtx) operate() error {
 	// if we get here - we know the signals are running
 	soc.markSensorPhase(v1alpha1.NodePhaseActive, false, "listening for signal events")
 	return nil
+}
+
+func (soc *sOperationCtx) notifySensor(action common.TriggerAction) {
+	sensorCh := soc.controller.sensorChs[soc.s.Name]
+	sensorCh <- pb.SensorEvent{
+		Name: soc.s.Name,
+		Type: string(action),
+	}
 }
 
 func (soc *sOperationCtx) reRunSensor() {

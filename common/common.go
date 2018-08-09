@@ -29,6 +29,14 @@ const (
 	EnvVarKubeConfig = "KUBE_CONFIG"
 )
 
+type TriggerAction string
+
+const (
+	TriggerAndStop TriggerAction = "TriggerAndStop"
+
+	TriggerAndRepeat TriggerAction = "TriggerAndRepeat"
+)
+
 // SENSOR CONTROLLER CONSTANTS
 const (
 	// DefaultSensorControllerDeploymentName is the default deployment name of the sensor sensor-controller

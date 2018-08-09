@@ -20,7 +20,7 @@ package github.com.argoproj.argo_events.proto;
 
 service SensorUpdate {
     // updates the state of sensor
-    rpc UpdateSensor(SensorEvent) returns (SensorResponse) {}
+    rpc UpdateSensor(stream SensorEvent) returns (SensorResponse) {}
 }
 
 message SensorEvent {

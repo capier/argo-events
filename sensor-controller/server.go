@@ -1,7 +1,6 @@
 package sensor_controller
 
 import (
-	"context"
 	"fmt"
 	pb "github.com/argoproj/argo-events/proto"
 	log "github.com/sirupsen/logrus"
@@ -9,23 +8,27 @@ import (
 	"net"
 )
 
-func (s *SensorController) UpdateSensor(ctx context.Context, se *pb.SensorEvent) (*pb.SensorResponse, error) {
-	defer s.sMux.Unlock()
-	s.sMux.Lock()
-
-	var sensorCh chan pb.SensorEvent
-	if sensorCh, ok := s.sensorChs[se.Name]; !ok {
-		sensorCh = make(chan pb.SensorEvent)
-		s.sensorChs[se.Name] = sensorCh
+func (s *SensorController) UpdateSensor(signalNotificationStream pb.SensorUpdate_UpdateSensorServer) error {
+	signalNotification, err := signalNotificationStream.Recv()
+	if err != nil {
+		log.Errorf("failed to listen to signal notification. Err: %+v", err)
+		return err
 	}
 
+	var sensorCh chan pb.SensorEvent
+	s.sMux.Lock()
+	if sensorCh, ok := s.sensorChs[signalNotification.Name]; !ok {
+		sensorCh = make(chan pb.SensorEvent)
+		s.sensorChs[signalNotification.Name] = sensorCh
+	}
+	s.sMux.Unlock()
+
 	go func() {
-		sensorCh <- *se
+		sensorCh <- *signalNotification
 	}()
 	action := <-sensorCh
-	return &pb.SensorResponse{
-		Action: action.Name,
-	}, nil
+	signalNotificationStream.SendMsg(action)
+	return nil
 }
 
 func (s *SensorController) startServer(port int) {

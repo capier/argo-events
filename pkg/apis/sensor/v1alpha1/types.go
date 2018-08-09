@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"hash/fnv"
 
+	"github.com/argoproj/argo-events/pkg/event"
 	"github.com/minio/minio-go"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // NodeType is the type of a node
@@ -250,7 +250,6 @@ type WebhookSignal struct {
 	Method string `json:"method" protobuf:"bytes,2,opt,name=method"`
 }
 
-
 // RetryStrategy represents a strategy for retrying operations
 // TODO: implement me
 type RetryStrategy struct {
@@ -321,7 +320,7 @@ type NodeStatus struct {
 // EventWrapper wraps an event with an additional flag to check if we processed this event already
 type EventWrapper struct {
 	Event event.Event `json:"event" protobuf:"bytes,1,opt,name=event"`
-	Seen  bool  `json:"seen" protobuf:"bytes,2,opt,name=seen"`
+	Seen  bool        `json:"seen" protobuf:"bytes,2,opt,name=seen"`
 }
 
 // URI is a Uniform Resource Identifier based on RFC 3986
