@@ -62,6 +62,9 @@ const (
 	// Sensor service port
 	SensorServicePort = 9300
 
+	// SensorName refers env var for name of sensor
+	SensorName = "SENSOR_NAME"
+
 )
 
 // GATEWAY CONTROLLER CONSTANTS

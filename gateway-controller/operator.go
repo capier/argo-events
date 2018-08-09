@@ -47,8 +47,15 @@ func newGatewayOperationCtx(gw *v1alpha1.Gateway, controller *GatewayController)
 
 func (gwc *gwOperationCtx) operate() error {
 	gwc.log.Info().Str("name", gwc.gw.Name).Msg("Operating on gateway-controller")
+
+	// validate gateway
+	err := gwc.validate()
+	if err != nil {
+		gwc.log.Error().Err(err).Msg("gateway validation failed")
+		return err
+	}
+
 	gatewayClient := gwc.controller.gatewayClientset.ArgoprojV1alpha1().Gateways(gwc.gw.Namespace)
-	// operate on gateway-controller only if it in new state
 
 	switch gwc.gw.Status {
 	case v1alpha1.NodePhaseNew:
@@ -70,6 +77,7 @@ func (gwc *gwOperationCtx) operate() error {
 			Spec: k8v1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
+						ServiceAccountName: gwc.gw.Spec.ServiceAccountName,
 						Containers: []corev1.Container{
 							{
 								Name:            "event-processor",
@@ -78,7 +86,7 @@ func (gwc *gwOperationCtx) operate() error {
 								Env: []corev1.EnvVar{
 									{
 										Name: common.TransformerPortEnvVar,
-										Value: fmt.Sprintf("%s", common.TransformerPort),
+										Value: fmt.Sprintf("%d", common.TransformerPort),
 									},
 								},
 							},
@@ -113,7 +121,7 @@ func (gwc *gwOperationCtx) operate() error {
 
 		_, err := gwc.kubeClientset.AppsV1().Deployments(gwc.gw.Namespace).Create(gatewayDeployment)
 		if err != nil {
-			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Err(err).Msg("Error deploying gateway-controller")
+			gwc.log.Error().Str("gateway-controller", gwc.gw.Name).Err(err).Msg("failed gateway deployment")
 			gwc.gw.Status = v1alpha1.NodePhaseError
 		} else {
 			gwc.gw.Status = v1alpha1.NodePhaseRunning
@@ -122,7 +130,7 @@ func (gwc *gwOperationCtx) operate() error {
 
 		err = gwc.reapplyUpdate(gatewayClient)
 		if err != nil {
-			gwc.log.Error().Str("gateway-controller-name", gwc.gw.Name).Msg("failed to update gateway-controller")
+			gwc.log.Error().Str("gateway-controller", gwc.gw.Name).Msg("failed to update gateway")
 			return err
 		}
 		return nil

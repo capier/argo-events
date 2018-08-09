@@ -21,6 +21,7 @@ import (
 	"errors"
 	"sync"
 	"time"
+	pb "github.com/argoproj/argo-events/proto"
 
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -66,8 +67,11 @@ type SensorController struct {
 	informer cache.SharedIndexInformer
 	queue    workqueue.RateLimitingInterface
 
-	// inventory for all types of signal implementations
-	signalMu      sync.Mutex
+	// sensor channels
+	sensorChs map[string]chan pb.SensorEvent
+
+	// mutex for sensor channels
+	sMux sync.Mutex
 }
 
 // NewSensorController creates a new Controller
@@ -78,6 +82,7 @@ func NewSensorController(rest *rest.Config, configMap string, signalMgr *SignalM
 		kubeClientset:   kubernetes.NewForConfigOrDie(rest),
 		sensorClientset: sensorclientset.NewForConfigOrDie(rest),
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		sensorChs:  map[string]chan pb.SensorEvent{},
 	}
 }
 

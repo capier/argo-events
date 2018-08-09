@@ -59,5 +59,5 @@ func main() {
 	}
 
 	http.HandleFunc("/", eoc.HandleTransformRequest)
-	log.Fatal(http.ListenAndServe(":" + fmt.Sprintf("%s", common.TransformerPort), nil))
+	log.Fatal(http.ListenAndServe(":" + fmt.Sprintf("%d", common.TransformerPort), nil))
 }

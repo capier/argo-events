@@ -30,6 +30,7 @@ type GatewaySpec struct {
 	Type      string `json:"type" protobuf:"bytes,5,opt,name=type"`
 	Service   Service   `json:"exposed" protobuf:"bytes,6,opt,name=service"`
 	Sensor    string `json:"sensor" protobuf:"bytes,7,opt,name=sensor"`
+	ServiceAccountName string `json:"service_account_name" protobuf:"bytes,8,opt,name=service_account_name"`
 }
 
 // NodePhase is the label for the condition of a node

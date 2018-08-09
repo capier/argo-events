@@ -105,6 +105,12 @@ func (soc *sOperationCtx) operate() error {
 							{
 								Name: soc.s.Name,
 								Image: common.SensorImage,
+								Env: []corev1.EnvVar{
+									{
+										Name: common.SensorName,
+										Value: soc.s.Name,
+									},
+								},
 							},
 						},
 					},
@@ -174,6 +180,10 @@ func (soc *sOperationCtx) operate() error {
 			if soc.s.Spec.Repeat {
 				soc.reRunSensor()
 			} else {
+				// Remove sensor channel from channel map
+				soc.controller.sMux.Lock()
+				delete(soc.controller.sensorChs, soc.s.Name)
+				soc.controller.sMux.Unlock()
 				soc.markSensorPhase(v1alpha1.NodePhaseComplete, true)
 			}
 			return nil
