@@ -22,10 +22,11 @@ import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // apply the params to the resource json object
-func applyParams(jsonObj []byte, params []v1alpha1.ResourceParameter, events map[string]v1alpha1.Event) ([]byte, error) {
+func applyParams(jsonObj []byte, params []v1alpha1.ResourceParameter, events map[string]event.Event) ([]byte, error) {
 	tmp := make([]byte, len(jsonObj))
 	for _, param := range params {
 		// let's grab the param value
@@ -46,7 +47,7 @@ func applyParams(jsonObj []byte, params []v1alpha1.ResourceParameter, events map
 
 // helper method to resolve the parameter's value from the src
 // returns an error if the Path is invalid/not found and the default value is nil OR if the signal event doesn't exist and default value is nil
-func resolveParamValue(src *v1alpha1.ResourceParameterSource, events map[string]v1alpha1.Event) (string, error) {
+func resolveParamValue(src *v1alpha1.ResourceParameterSource, events map[string]event.Event) (string, error) {
 	if e, ok := events[src.Signal]; ok {
 		js, err := renderEventDataAsJSON(&e)
 		if err != nil {

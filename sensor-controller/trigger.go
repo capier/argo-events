@@ -17,10 +17,6 @@ limitations under the License.
 package sensor_controller
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/nats-io/go-nats"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -30,6 +26,7 @@ import (
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	"github.com/argoproj/argo-events/store"
+	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // check all the signal statuses and if they are all resolved and constraints are met, let's create the trigger event
@@ -55,13 +52,6 @@ func (soc *sOperationCtx) processTrigger(trigger v1alpha1.Trigger) (*v1alpha1.No
 
 // execute the trigger
 func (soc *sOperationCtx) executeTrigger(trigger v1alpha1.Trigger) error {
-	if trigger.Message != nil {
-		err := sendMessage(trigger.Message)
-		if err != nil {
-			soc.log.Warn("failed to send message: %s", err)
-			return err
-		}
-	}
 	if trigger.Resource != nil {
 		creds, err := store.GetCredentials(soc.controller.kubeClientset, soc.controller.Config.Namespace, &trigger.Resource.Source)
 		if err != nil {
@@ -83,21 +73,22 @@ func (soc *sOperationCtx) executeTrigger(trigger v1alpha1.Trigger) error {
 	return nil
 }
 
-func sendMessage(message *v1alpha1.Message) error {
-	payload := []byte(message.Body)
-	switch strings.ToLower(message.Stream.Type) {
-	case "nats":
-		natsConnection, err := nats.Connect(message.Stream.URL)
-		if err != nil {
-			return err
-		}
-		subject := message.Stream.Attributes["subject"]
-		defer natsConnection.Close()
-		return natsConnection.Publish(subject, payload)
-	default:
-		return fmt.Errorf("unsupported type of stream %s", message.Stream.Type)
-	}
-}
+// Todo: do we need this? Shouldn't user workflow take care of sending such messages.
+//func sendMessage(message *v1alpha1.Message) error {
+//	payload := []byte(message.Body)
+//	switch strings.ToLower(message.Stream.Type) {
+//	case "nats":
+//		natsConnection, err := nats.Connect(message.Stream.URL)
+//		if err != nil {
+//			return err
+//		}
+//		subject := message.Stream.Attributes["subject"]
+//		defer natsConnection.Close()
+//		return natsConnection.Publish(subject, payload)
+//	default:
+//		return fmt.Errorf("unsupported type of stream %s", message.Stream.Type)
+//	}
+//}
 
 func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj *unstructured.Unstructured) error {
 	if resource.Namespace != "" {
@@ -173,8 +164,8 @@ func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject
 
 // helper method to extract the events from the signals associated with the resource params
 // returns a map of the events keyed by the signal name
-func (soc *sOperationCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]v1alpha1.Event {
-	events := make(map[string]v1alpha1.Event)
+func (soc *sOperationCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]event.Event {
+	events := make(map[string]event.Event)
 	for _, param := range params {
 		if param.Src != nil {
 			node := soc.getNodeByName(param.Src.Signal)

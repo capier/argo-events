@@ -75,11 +75,23 @@ func (sCtx *sensorCtx) performAction() {
 		log.Error().Err(err).Msg("failed to get action message from sensor controller")
 	}
 
-
+	for _, trigger := range sCtx.sensor.Spec.Triggers {
+		_, err := .processTrigger(trigger)
+		if err != nil {
+			soc.log.Errorf("trigger %s failed to execute: %s", trigger.Name, err)
+			soc.markNodePhase(trigger.Name, v1alpha1.NodePhaseError, err.Error())
+			soc.markSensorPhase(v1alpha1.NodePhaseError, false, err.Error())
+			return err
+		}
+	}
 
 	switch common.TriggerAction(action.Type) {
 	case common.TriggerAndRepeat:
+		log.Debug().Msg("keeping sensor server running")
 	case common.TriggerAndStop:
+		// Close the gRPC stream and shutdown sensor http server
+		(*sCtx.stream).CloseSend()
+		sCtx.server.Shutdown(context.Background())
 	default:
 		log.Warn().Str("action-type", action.Type).Msg("unknown action type")
 	}

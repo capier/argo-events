@@ -19,13 +19,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
+	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // this test is meant to cover the missing cases for those not covered in signal-filter_test.go and trigger-params_test.go
 func Test_renderEventDataAsJSON(t *testing.T) {
 	type args struct {
-		e *v1alpha1.Event
+		e *event.Event
 	}
 	tests := []struct {
 		name    string
@@ -41,50 +41,50 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 		},
 		{
 			name:    "missing content type",
-			args:    args{e: &v1alpha1.Event{}},
+			args:    args{e: &event.Event{}},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "valid yaml content",
-			args: args{e: &v1alpha1.Event{
-				Context: v1alpha1.EventContext{
+			args: args{e: &event.Event{
+				Ctx: event.EventContext{
 					ContentType: MediaTypeYAML,
 				},
-				Data: []byte(`apiVersion: v1alpha1`),
+				Payload: []byte(`apiVersion: v1alpha1`),
 			}},
 			want:    []byte(`{"apiVersion":"v1alpha1"}`),
 			wantErr: false,
 		},
 		{
 			name: "json content marked as yaml",
-			args: args{e: &v1alpha1.Event{
-				Context: v1alpha1.EventContext{
+			args: args{e: &event.Event{
+				Ctx: event.EventContext{
 					ContentType: MediaTypeYAML,
 				},
-				Data: []byte(`{"apiVersion":5}`),
+				Payload: []byte(`{"apiVersion":5}`),
 			}},
 			want:    []byte(`{"apiVersion":5}`),
 			wantErr: false,
 		},
 		{
 			name: "invalid json content",
-			args: args{e: &v1alpha1.Event{
-				Context: v1alpha1.EventContext{
+			args: args{e: &event.Event{
+				Ctx: event.EventContext{
 					ContentType: MediaTypeJSON,
 				},
-				Data: []byte(`{5:"numberkey"}`),
+				Payload: []byte(`{5:"numberkey"}`),
 			}},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "invalid yaml content",
-			args: args{e: &v1alpha1.Event{
-				Context: v1alpha1.EventContext{
+			args: args{e: &event.Event{
+				Ctx: event.EventContext{
 					ContentType: MediaTypeYAML,
 				},
-				Data: []byte(`%\x786`),
+				Payload: []byte(`%\x786`),
 			}},
 			want:    nil,
 			wantErr: true,
