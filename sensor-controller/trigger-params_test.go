@@ -20,28 +20,30 @@ import (
 	"testing"
 
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
+	"github.com/argoproj/argo-events/pkg/event"
+	scon "github.com/argoproj/argo-events/sensor-controller"
 )
 
 func Test_applyParams(t *testing.T) {
 	defaultValue := "default"
-	events := map[string]v1alpha1.Event{
-		"simpleJSON": v1alpha1.Event{
-			Context: v1alpha1.EventContext{
-				ContentType: MediaTypeJSON,
+	events := map[string]event.Event{
+		"simpleJSON": event.Event{
+			Ctx: event.EventContext{
+				ContentType: scon.MediaTypeJSON,
 			},
-			Data: []byte(`{"name":{"first":"matt","last":"magaldi"},"age":24}`),
+			Payload: []byte(`{"name":{"first":"matt","last":"magaldi"},"age":24}`),
 		},
-		"invalidJSON": v1alpha1.Event{
-			Context: v1alpha1.EventContext{
-				ContentType: MediaTypeJSON,
+		"invalidJSON": event.Event{
+			Ctx: event.EventContext{
+				ContentType: scon.MediaTypeJSON,
 			},
-			Data: []byte(`apiVersion: v1alpha1`),
+			Payload: []byte(`apiVersion: v1alpha1`),
 		},
 	}
 	type args struct {
 		jsonObj []byte
 		params  []v1alpha1.ResourceParameter
-		events  map[string]v1alpha1.Event
+		events  map[string]event.Event
 	}
 	tests := []struct {
 		name    string

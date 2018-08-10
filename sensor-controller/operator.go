@@ -302,7 +302,7 @@ func (soc *sOperationCtx) initializeNode(nodeName string, nodeType v1alpha1.Node
 
 // mark the node with a phase, retuns the node
 func (soc *sOperationCtx) markNodePhase(nodeName string, phase v1alpha1.NodePhase, message ...string) *v1alpha1.NodeStatus {
-	node := soc.getNodeByName(nodeName)
+	node := GetNodeByName(soc.s, nodeName)
 	if node == nil {
 		soc.log.Panicf("node '%s' uninitialized", nodeName)
 	}

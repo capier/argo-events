@@ -17,13 +17,12 @@ limitations under the License.
 package sensor_controller
 
 import (
-	"encoding/json"
+	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
+	"github.com/argoproj/argo-events/pkg/event"
 	"fmt"
 	"strings"
-
-	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
+	"encoding/json"
 	"github.com/ghodss/yaml"
-	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // various supported media types
@@ -34,24 +33,16 @@ const (
 	MediaTypeYAML string = "application/yaml"
 )
 
+
 // getNodeByName returns a copy of the node from this sensor for the nodename
 // for signals this nodename should be the name of the signal
-func (soc *sOperationCtx) getNodeByName(nodename string) *v1alpha1.NodeStatus {
-	nodeID := soc.s.NodeID(nodename)
-	node, ok := soc.s.Status.Nodes[nodeID]
+func getNodeByName(sensor *v1alpha1.Sensor, nodename string) *v1alpha1.NodeStatus {
+	nodeID := sensor.NodeID(nodename)
+	node, ok := sensor.Status.Nodes[nodeID]
 	if !ok {
 		return nil
 	}
 	return node.DeepCopy()
-}
-
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }
 
 // util method to render an event's data as a JSON []byte
@@ -78,6 +69,15 @@ func renderEventDataAsJSON(e *event.Event) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unsupported event content type: %s", e.Ctx.ContentType)
 	}
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func isJSON(b []byte) bool {

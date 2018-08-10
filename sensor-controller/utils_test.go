@@ -92,7 +92,7 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := renderEventDataAsJSON(tt.args.e)
+			got, err := RenderEventDataAsJSON(tt.args.e)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("renderEventDataAsJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return

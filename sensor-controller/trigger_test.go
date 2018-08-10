@@ -17,13 +17,6 @@ limitations under the License.
 package sensor_controller
 
 import (
-	"strconv"
-	"testing"
-
-	"github.com/nats-io/gnatsd/server"
-	"github.com/nats-io/gnatsd/test"
-
-	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
@@ -43,62 +36,4 @@ var sampleTrigger = v1alpha1.Trigger{
 		},
 		Labels: map[string]string{"test-label": "test-value"},
 	},
-}
-
-func TestProcessTrigger(t *testing.T) {
-	fake := newFakeController()
-	defer fake.teardown()
-
-	triggers := make([]v1alpha1.Trigger, 1)
-	triggers[0] = sampleTrigger
-	sampleSensor.Spec.Triggers = triggers
-
-	soc := newSensorOperationCtx(&sampleSensor, fake.SensorController)
-
-	node, err := soc.processTrigger(sampleTrigger)
-	assert.NotNil(t, err)
-	// assert node was processed correctly
-	assert.Equal(t, sampleTrigger.Name, node.Name)
-	assert.Equal(t, sampleTrigger.Name, node.DisplayName)
-	assert.Equal(t, v1alpha1.NodePhaseError, node.Phase)
-	assert.Equal(t, v1alpha1.NodeTypeTrigger, node.Type)
-	// assert node equality with operationContext
-	assert.Equal(t, *node, soc.s.Status.Nodes[node.ID])
-
-	// now force node status to resolved
-	node.Phase = v1alpha1.NodePhaseComplete
-	soc.s.Status.Nodes[node.ID] = *node
-	node, err = soc.processTrigger(sampleTrigger)
-	assert.Nil(t, err)
-	assert.Equal(t, v1alpha1.NodePhaseComplete, node.Phase)
-}
-
-func TestSendMessage(t *testing.T) {
-	natsEmbeddedServerOpts := server.Options{
-		Host:           "localhost",
-		Port:           4224,
-		NoLog:          true,
-		NoSigs:         true,
-		MaxControlLine: 256,
-	}
-	testServer := test.RunServer(&natsEmbeddedServerOpts)
-	defer testServer.Shutdown()
-
-	unsupportedMsg := &v1alpha1.Message{
-		Body:   "",
-		Stream: v1alpha1.Stream{},
-	}
-	err := sendMessage(unsupportedMsg)
-	assert.NotNil(t, err)
-
-	supportedMsg := &v1alpha1.Message{
-		Body: "",
-		Stream: v1alpha1.Stream{
-			Type:       "NATS",
-			URL:        "nats://" + natsEmbeddedServerOpts.Host + ":" + strconv.Itoa(natsEmbeddedServerOpts.Port),
-			Attributes: map[string]string{"subject": "test"},
-		},
-	}
-	err = sendMessage(supportedMsg)
-	assert.Nil(t, err)
 }

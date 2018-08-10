@@ -29,31 +29,10 @@ import (
 	"github.com/argoproj/argo-events/pkg/event"
 )
 
-// check all the signal statuses and if they are all resolved and constraints are met, let's create the trigger event
-func (soc *sOperationCtx) processTrigger(trigger v1alpha1.Trigger) (*v1alpha1.NodeStatus, error) {
-	soc.log.Debugf("evaluating trigger '%s'", trigger.Name)
-	node := soc.getNodeByName(trigger.Name)
-	if node != nil && node.IsComplete() {
-		return node, nil
-	}
-
-	if node == nil {
-		node = soc.initializeNode(trigger.Name, v1alpha1.NodeTypeTrigger, v1alpha1.NodePhaseNew)
-	}
-
-	if node.Phase != v1alpha1.NodePhaseComplete {
-		err := soc.executeTrigger(trigger)
-		if err != nil {
-			return soc.markNodePhase(trigger.Name, v1alpha1.NodePhaseError, err.Error()), err
-		}
-	}
-	return soc.markNodePhase(trigger.Name, v1alpha1.NodePhaseComplete), nil
-}
-
 // execute the trigger
-func (soc *sOperationCtx) executeTrigger(trigger v1alpha1.Trigger) error {
+func (sc *sensorCtx) executeTrigger(trigger v1alpha1.Trigger) error {
 	if trigger.Resource != nil {
-		creds, err := store.GetCredentials(soc.controller.kubeClientset, soc.controller.Config.Namespace, &trigger.Resource.Source)
+		creds, err := store.GetCredentials(sc.kubeClient, sc.sensor.Namespace, &trigger.Resource.Source)
 		if err != nil {
 			return err
 		}
@@ -65,7 +44,7 @@ func (soc *sOperationCtx) executeTrigger(trigger v1alpha1.Trigger) error {
 		if err != nil {
 			return err
 		}
-		err = soc.createResourceObject(trigger.Resource, uObj)
+		err = sc.createResourceObject(trigger.Resource, uObj)
 		if err != nil {
 			return err
 		}
@@ -73,24 +52,7 @@ func (soc *sOperationCtx) executeTrigger(trigger v1alpha1.Trigger) error {
 	return nil
 }
 
-// Todo: do we need this? Shouldn't user workflow take care of sending such messages.
-//func sendMessage(message *v1alpha1.Message) error {
-//	payload := []byte(message.Body)
-//	switch strings.ToLower(message.Stream.Type) {
-//	case "nats":
-//		natsConnection, err := nats.Connect(message.Stream.URL)
-//		if err != nil {
-//			return err
-//		}
-//		subject := message.Stream.Attributes["subject"]
-//		defer natsConnection.Close()
-//		return natsConnection.Publish(subject, payload)
-//	default:
-//		return fmt.Errorf("unsupported type of stream %s", message.Stream.Type)
-//	}
-//}
-
-func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj *unstructured.Unstructured) error {
+func (sc *sensorCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj *unstructured.Unstructured) error {
 	if resource.Namespace != "" {
 		obj.SetNamespace(resource.Namespace)
 	}
@@ -116,7 +78,7 @@ func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject
 		if err != nil {
 			return err
 		}
-		events := soc.extractSignalEvents(resource.Parameters)
+		events := sc.extractSignalEvents(resource.Parameters)
 		jUpdatedObj, err := applyParams(jObj, resource.Parameters, events)
 		if err != nil {
 			return err
@@ -128,8 +90,8 @@ func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject
 	}
 
 	gvk := obj.GroupVersionKind()
-	clientPool := dynamic.NewDynamicClientPool(soc.controller.kubeConfig)
-	disco, err := discovery.NewDiscoveryClientForConfig(soc.controller.kubeConfig)
+	clientPool := dynamic.NewDynamicClientPool(sc.kubeConfig)
+	disco, err := discovery.NewDiscoveryClientForConfig(sc.kubeConfig)
 	if err != nil {
 		return err
 	}
@@ -142,14 +104,14 @@ func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject
 	if err != nil {
 		return err
 	}
-	soc.log.Debugf("chose api '%s' for %s", apiResource.Name, gvk)
+	sc.log.Debug().Str("api", apiResource.Name).Str("group-version", gvk.Version).Msg("created api resource")
 
-	reIf := client.Resource(apiResource, soc.controller.Config.Namespace)
+	reIf := client.Resource(apiResource, sc.sensor.Namespace)
 	liveObj, err := reIf.Create(obj)
-	if err == nil {
-		soc.log.Infof("%s '%s' created", liveObj.GetKind(), liveObj.GetName())
-		return nil
+	if err != nil {
+		return err
 	}
+	sc.log.Info().Str("kind", liveObj.GetKind()).Str("name", liveObj.GetName()).Msg("created object")
 	if !errors.IsAlreadyExists(err) {
 		return err
 	}
@@ -158,23 +120,23 @@ func (soc *sOperationCtx) createResourceObject(resource *v1alpha1.ResourceObject
 		return err
 	}
 	//todo: implement a diff between obj and liveObj
-	soc.log.Warnf("%s '%s' already exists", liveObj.GetKind(), liveObj.GetName())
+	sc.log.Warn().Str("kind", liveObj.GetKind()).Str("name", liveObj.GetName()).Msg("object already exist")
 	return nil
 }
 
 // helper method to extract the events from the signals associated with the resource params
 // returns a map of the events keyed by the signal name
-func (soc *sOperationCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]event.Event {
+func (sc *sensorCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]event.Event {
 	events := make(map[string]event.Event)
 	for _, param := range params {
 		if param.Src != nil {
-			node := soc.getNodeByName(param.Src.Signal)
+			node := getNodeByName(sc.sensor, param.Src.Signal)
 			if node == nil {
-				soc.log.Warnf("WARNING: signal node for '%s' does not exist, cannot apply parameter '%s'", param.Src.Signal, param.Dest)
+				sc.log.Warn().Str("param-src", param.Src.Signal).Str("param-dest", param.Dest).Msg("WARNING: signal node does not exist, cannot apply parameter")
 				continue
 			}
 			if node.LatestEvent == nil {
-				soc.log.Warnf("WARNING: signal node for '%s' contains nil Event. cannot apply parameter '%s'", param.Src.Signal, param.Dest)
+				sc.log.Warn().Str("param-src", param.Src.Signal).Str("param-dest", param.Dest).Msg("WARNING: signal node does not exist, cannot apply parameter")
 				continue
 			}
 			events[param.Src.Signal] = node.LatestEvent.Event
