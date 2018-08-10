@@ -49,11 +49,11 @@ type sOperationCtx struct {
 	controller *SensorController
 
 	// Communication between sensor controller and sensor pod
-	eventCh   *chan string
+	sensorCh chan pb.SensorEvent
 }
 
 // newSensorOperationCtx creates and initializes a new sOperationCtx object
-func newSensorOperationCtx(s *v1alpha1.Sensor, controller *SensorController) *sOperationCtx {
+func newSensorOperationCtx(s *v1alpha1.Sensor, controller *SensorController, sensorCh chan pb.SensorEvent) *sOperationCtx {
 	return &sOperationCtx{
 		s:       s.DeepCopy(),
 		updated: false,
@@ -62,6 +62,7 @@ func newSensorOperationCtx(s *v1alpha1.Sensor, controller *SensorController) *sO
 			"namespace": s.Namespace,
 		}),
 		controller: controller,
+		sensorCh: sensorCh,
 	}
 }
 
@@ -153,11 +154,11 @@ func (soc *sOperationCtx) operate() error {
 		}
 	}
 
-	// process the sensor's signals
-	for _, signal := range soc.s.Spec.Signals {
-		_, err := soc.processSignal(signal)
+	// process signal notifications from sensor
+	for signalNotification := range soc.sensorCh {
+		_, err := soc.processSignal(signalNotification.Name)
 		if err != nil {
-			soc.markNodePhase(signal.Name, v1alpha1.NodePhaseError, err.Error())
+			soc.markNodePhase(signalNotification.Name, v1alpha1.NodePhaseError, err.Error())
 			return err
 		}
 	}
@@ -165,6 +166,7 @@ func (soc *sOperationCtx) operate() error {
 	// process the triggers if all sensor signals are resolved/successful
 	// this means we can start processing triggers when signals are resolved, not completed so may introduce discrepancy if signal fails to complete after being resolved
 	if soc.s.AreAllNodesSuccess(v1alpha1.NodeTypeSignal) {
+		// Todo: move this to sensor pod
 		for _, trigger := range soc.s.Spec.Triggers {
 			_, err := soc.processTrigger(trigger)
 			if err != nil {
@@ -183,8 +185,9 @@ func (soc *sOperationCtx) operate() error {
 				soc.reRunSensor()
 			} else {
 				soc.notifySensor(common.TriggerAndStop)
-				// Remove sensor channel from channel map
+				// Close and remove sensor channel from channel map
 				soc.controller.sMux.Lock()
+				close(soc.sensorCh)
 				delete(soc.controller.sensorChs, soc.s.Name)
 				soc.controller.sMux.Unlock()
 				soc.markSensorPhase(v1alpha1.NodePhaseComplete, true)
@@ -198,9 +201,9 @@ func (soc *sOperationCtx) operate() error {
 	return nil
 }
 
+// send action command to sensor.
 func (soc *sOperationCtx) notifySensor(action common.TriggerAction) {
-	sensorCh := soc.controller.sensorChs[soc.s.Name]
-	sensorCh <- pb.SensorEvent{
+	soc.sensorCh <- pb.SensorEvent{
 		Name: soc.s.Name,
 		Type: string(action),
 	}

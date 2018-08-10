@@ -40,7 +40,7 @@ const (
 // SENSOR CONTROLLER CONSTANTS
 const (
 	// DefaultSensorControllerDeploymentName is the default deployment name of the sensor sensor-controller
-	DefaultSensorControllerDeploymentName = "sensor-sensor-controller"
+	DefaultSensorControllerDeploymentName = "sensor-controller"
 
 	// SensorControllerConfigMapKey is the key in the configmap to retrieve sensor configuration from.
 	// Content encoding is expected to be YAML.
@@ -72,6 +72,8 @@ const (
 
 	// SensorName refers env var for name of sensor
 	SensorName = "SENSOR_NAME"
+
+	SensorNamespace = "SENSOR_NAMESPACE"
 
 )
 

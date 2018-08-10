@@ -20,19 +20,12 @@ import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
-func (soc *sOperationCtx) processSignal(signal v1alpha1.Signal) (*v1alpha1.NodeStatus, error) {
-	soc.log.Debugf("evaluating signal '%s'", signal.Name)
-	node := soc.getNodeByName(signal.Name)
+func (soc *sOperationCtx) processSignal(signal string) (*v1alpha1.NodeStatus, error) {
+	soc.log.Debugf("evaluating signal '%s'", signal)
+	node := soc.getNodeByName(signal)
 
 	if node == nil {
-		node = soc.initializeNode(signal.Name, v1alpha1.NodeTypeSignal, v1alpha1.NodePhaseNew)
-	}
-
-	if node.Phase == v1alpha1.NodePhaseNew {
-		err := soc.watchSignal(&signal)
-		if err != nil {
-			return nil, err
-		}
+		node = soc.initializeNode(signal, v1alpha1.NodeTypeSignal, v1alpha1.NodePhaseNew)
 	}
 
 	// let's check the latest event to see if node has completed?
@@ -41,14 +34,8 @@ func (soc *sOperationCtx) processSignal(signal v1alpha1.Signal) (*v1alpha1.NodeS
 			soc.s.Status.Nodes[node.ID].LatestEvent.Seen = true
 			soc.updated = true
 		}
-		return soc.markNodePhase(signal.Name, v1alpha1.NodePhaseComplete), nil
+		return soc.markNodePhase(signal, v1alpha1.NodePhaseComplete), nil
 	}
 
-	return soc.markNodePhase(signal.Name, v1alpha1.NodePhaseActive, "stream established"), nil
-}
-
-// waits for signal notification from sensor
-func (soc *sOperationCtx) watchSignal(signal *v1alpha1.Signal) error {
-	<- soc.controller.sensorChs[signal.Name]
-	return nil
+	return soc.markNodePhase(signal, v1alpha1.NodePhaseActive, "stream established"), nil
 }

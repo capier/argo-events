@@ -25,8 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/util/workqueue"
 
-	fakesensor "github.com/argoproj/argo-events/pkg/client/clientset/versioned/fake"
-	"github.com/argoproj/argo-events/sdk"
+	fakesensor "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/fake"
 )
 
 // fakeController is a wrapper around the sensorController to allow efficient test setup/cleanup
@@ -44,7 +43,6 @@ func (f *fakeController) setup(namespace string) {
 		kubeClientset:   fake.NewSimpleClientset(),
 		sensorClientset: fakesensor.NewSimpleClientset(),
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		signalStreams:   make(map[string]sdk.SignalService_ListenService),
 	}
 }
 
