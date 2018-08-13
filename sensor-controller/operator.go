@@ -88,8 +88,19 @@ func (soc *sOperationCtx) operate() error {
 			soc.markSensorPhase(v1alpha1.NodePhaseError, true, err.Error())
 			return nil
 		}
+
+		// Initialize all signal nodes
+		for _, signal := range soc.s.Spec.Signals {
+			soc.initializeNode(signal.Name, v1alpha1.NodeTypeSignal, v1alpha1.NodePhaseNew)
+		}
+
+		// Initialize all trigger nodes
+		for _, trigger := range soc.s.Spec.Triggers {
+			soc.initializeNode(trigger.Name, v1alpha1.NodeTypeTrigger, v1alpha1.NodePhaseNew)
+		}
+
+		// Todo: Make sensor as subscriber to a Pub-Sub system.
 		// Create a ClusterIP service to expose sensor in cluster
-		// Todo: Make sensor as subscriber to future Pub-Sub system.
 		// For now, sensor will receive event notifications through http server.
 		// And it will communicate the updates back to sensor controller.
 		sensorDeployment := &appv1.Deployment{
@@ -119,14 +130,6 @@ func (soc *sOperationCtx) operate() error {
 				},
 			},
 		}
-
-		// Create sensor deployment
-		_, err = soc.controller.kubeClientset.AppsV1().Deployments(soc.s.Namespace).Create(sensorDeployment)
-		if err != nil {
-			soc.log.Errorf("failed to create sensor deployment. Err: %+v", err)
-			return err
-		}
-
 		// Create sensor service
 		sensorSvc := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
@@ -146,67 +149,37 @@ func (soc *sOperationCtx) operate() error {
 				},
 			},
 		}
-
+		// Create sensor deployment
+		_, err = soc.controller.kubeClientset.AppsV1().Deployments(soc.s.Namespace).Create(sensorDeployment)
+		if err != nil {
+			soc.log.Errorf("failed to create sensor deployment. Err: %+v", err)
+			return err
+		}
 		_, err = soc.controller.kubeClientset.CoreV1().Services(soc.s.Namespace).Create(sensorSvc)
 		if err != nil {
 			soc.log.Errorf("failed to create sensor service. Err: %+v", err)
 			return err
 		}
+
+		// if we get here - we know the signals are running
+		soc.markSensorPhase(v1alpha1.NodePhaseActive, false, "listening for signal events")
 	}
 
-	// process signal notifications from sensor
-	for signalNotification := range soc.sensorCh {
-		_, err := soc.processSignal(signalNotification.Name)
-		if err != nil {
-			soc.markNodePhase(signalNotification.Name, v1alpha1.NodePhaseError, err.Error())
-			return err
-		}
-	}
-
-	// process the triggers if all sensor signals are resolved/successful
-	// this means we can start processing triggers when signals are resolved, not completed so may introduce discrepancy if signal fails to complete after being resolved
-	if soc.s.AreAllNodesSuccess(v1alpha1.NodeTypeSignal) {
-		// Todo: move this to sensor pod
-		for _, trigger := range soc.s.Spec.Triggers {
-			_, err := soc.processTrigger(trigger)
-			if err != nil {
-				soc.log.Errorf("trigger %s failed to execute: %s", trigger.Name, err)
-				soc.markNodePhase(trigger.Name, v1alpha1.NodePhaseError, err.Error())
-				soc.markSensorPhase(v1alpha1.NodePhaseError, false, err.Error())
-				return err
+	if soc.s.Status.Phase == v1alpha1.NodePhaseActive {
+		if soc.s.AreAllNodesSuccess(v1alpha1.NodeTypeSignal) {
+			if soc.s.AreAllNodesSuccess(v1alpha1.NodeTypeTrigger) {
+				// here we need to check if the sensor is repeatable, if so, we should go back to init phase for the sensor & all the nodes
+				// todo: add spec level deadlines here
+				if soc.s.Spec.Repeat {
+					soc.reRunSensor()
+				} else {
+					soc.markSensorPhase(v1alpha1.NodePhaseComplete, true)
+				}
 			}
 		}
-
-		if soc.s.AreAllNodesSuccess(v1alpha1.NodeTypeTrigger) {
-			// here we need to check if the sensor is repeatable, if so, we should go back to init phase for the sensor & all the nodes
-			// todo: add spec level deadlines here
-			if soc.s.Spec.Repeat {
-				soc.notifySensor(common.TriggerAndRepeat)
-				soc.reRunSensor()
-			} else {
-				soc.notifySensor(common.TriggerAndStop)
-				// Close and remove sensor channel from channel map
-				soc.controller.sMux.Lock()
-				close(soc.sensorCh)
-				delete(soc.controller.sensorChs, soc.s.Name)
-				soc.controller.sMux.Unlock()
-				soc.markSensorPhase(v1alpha1.NodePhaseComplete, true)
-			}
-			return nil
-		}
 	}
 
-	// if we get here - we know the signals are running
-	soc.markSensorPhase(v1alpha1.NodePhaseActive, false, "listening for signal events")
 	return nil
-}
-
-// send action command to sensor.
-func (soc *sOperationCtx) notifySensor(action common.TriggerAction) {
-	soc.sensorCh <- pb.SensorEvent{
-		Name: soc.s.Name,
-		Type: string(action),
-	}
 }
 
 func (soc *sOperationCtx) reRunSensor() {
@@ -302,7 +275,7 @@ func (soc *sOperationCtx) initializeNode(nodeName string, nodeType v1alpha1.Node
 
 // mark the node with a phase, retuns the node
 func (soc *sOperationCtx) markNodePhase(nodeName string, phase v1alpha1.NodePhase, message ...string) *v1alpha1.NodeStatus {
-	node := GetNodeByName(soc.s, nodeName)
+	node := getNodeByName(soc.s, nodeName)
 	if node == nil {
 		soc.log.Panicf("node '%s' uninitialized", nodeName)
 	}

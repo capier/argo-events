@@ -18,24 +18,19 @@ package sensor_controller
 
 import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
+	"github.com/argoproj/argo-events/pkg/event"
 )
 
-func (soc *sOperationCtx) processSignal(signal string) (*v1alpha1.NodeStatus, error) {
-	soc.log.Debugf("evaluating signal '%s'", signal)
-	node := soc.getNodeByName(signal)
-
+func (sc *sensorCtx) processSignal(name string, event event.Event) (*v1alpha1.NodeStatus, error) {
+	sc.log.Info().Str("signal-name", name).Msg("processing signal")
+	node := getNodeByName(sc.sensor, name)
 	if node == nil {
-		node = soc.initializeNode(signal, v1alpha1.NodeTypeSignal, v1alpha1.NodePhaseNew)
+		node = sc.initializeNode(signal, v1alpha1.NodeTypeSignal, v1alpha1.NodePhaseNew)
+		// we can skip active state.
 	}
-
-	// let's check the latest event to see if node has completed?
-	if node.LatestEvent != nil {
-		if !node.LatestEvent.Seen {
-			soc.s.Status.Nodes[node.ID].LatestEvent.Seen = true
-			soc.updated = true
-		}
-		return soc.markNodePhase(signal, v1alpha1.NodePhaseComplete), nil
+	node.LatestEvent = &v1alpha1.EventWrapper{
+		Event: event,
+		Seen: true,
 	}
-
-	return soc.markNodePhase(signal, v1alpha1.NodePhaseActive, "stream established"), nil
+	return soc.markNodePhase(signal, v1alpha1.NodePhaseComplete, "signal processing completed"), nil
 }

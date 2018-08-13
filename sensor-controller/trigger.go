@@ -90,8 +90,8 @@ func (sc *sensorCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj
 	}
 
 	gvk := obj.GroupVersionKind()
-	clientPool := dynamic.NewDynamicClientPool(sc.kubeConfig)
-	disco, err := discovery.NewDiscoveryClientForConfig(sc.kubeConfig)
+	clientPool := dynamic.NewDynamicClientPool(sc.config)
+	disco, err := discovery.NewDiscoveryClientForConfig(sc.config)
 	if err != nil {
 		return err
 	}

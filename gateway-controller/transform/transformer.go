@@ -135,6 +135,6 @@ func (eoc *eOperationCtx) HandleTransformRequest(w http.ResponseWriter, r *http.
 	}
 	err = eoc.sendEvent(ce)
 	if err != nil {
-
+		eoc.log.Error().Err(err).Msg("failed to send cloud event to sensor")
 	}
 }
