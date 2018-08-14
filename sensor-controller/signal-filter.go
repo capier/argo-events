@@ -24,12 +24,15 @@ import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	"github.com/tidwall/gjson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/argoproj/argo-events/pkg/event"
 )
 
 // apply the signal filters to an event
-func filterEvent(f v1alpha1.SignalFilter, event *v1alpha1.Event) (bool, error) {
+func filterEvent(f v1alpha1.SignalFilter, event *event.Event) (bool, error) {
 	dataRes, err := filterData(f.Data, event)
-	return filterTime(f.Time, &event.Context.EventTime) && filterContext(f.Context, &event.Context) && dataRes, err
+	return filterTime(f.Time, &metav1.Time{
+		Time: event.Ctx.EventTime,
+	}) && filterContext(f.Context, &event.Ctx) && dataRes, err
 }
 
 // applyTimeFilter checks the eventTime against the timeFilter:
@@ -55,7 +58,7 @@ func filterTime(timeFilter *v1alpha1.TimeFilter, eventTime *metav1.Time) bool {
 // applyContextFilter checks the expected EventContext against the actual EventContext
 // values are only enforced if they are non-zero values
 // map types check that the expected map is a subset of the actual map
-func filterContext(expected *v1alpha1.EventContext, actual *v1alpha1.EventContext) bool {
+func filterContext(expected *event.EventContext, actual *event.EventContext) bool {
 	if expected == nil {
 		return true
 	}
@@ -72,10 +75,10 @@ func filterContext(expected *v1alpha1.EventContext, actual *v1alpha1.EventContex
 	if expected.CloudEventsVersion != "" {
 		res = res && expected.CloudEventsVersion == actual.CloudEventsVersion
 	}
-	if expected.Source != nil {
+	if expected.Source != "" {
 		res = res && reflect.DeepEqual(expected.Source, actual.Source)
 	}
-	if expected.SchemaURL != nil {
+	if expected.SchemaURL != "" {
 		res = res && reflect.DeepEqual(expected.SchemaURL, actual.SchemaURL)
 	}
 	if expected.ContentType != "" {
@@ -88,13 +91,13 @@ func filterContext(expected *v1alpha1.EventContext, actual *v1alpha1.EventContex
 // applyDataFilter runs the dataFilter against the event's data
 // returns (true, nil) when data passes filters, false otherwise
 // TODO: split this function up into smaller pieces
-func filterData(dataFilters []*v1alpha1.DataFilter, event *v1alpha1.Event) (bool, error) {
+func filterData(dataFilters []*v1alpha1.DataFilter, event *event.Event) (bool, error) {
 	// TODO: use the event.Context.SchemaURL to figure out correct data format to unmarshal to
 	// for now, let's just use a simple map[string]interface{} for arbitrary data
 	if event == nil {
 		return false, fmt.Errorf("nil event")
 	}
-	if event.Data == nil || len(event.Data) == 0 {
+	if event.Payload == nil || len(event.Payload) == 0 {
 		return true, nil
 	}
 	js, err := renderEventDataAsJSON(event)
@@ -135,7 +138,7 @@ func filterData(dataFilters []*v1alpha1.DataFilter, event *v1alpha1.Event) (bool
 }
 
 // checks that m contains the k,v pairs of sub
-func mapIsSubset(sub map[string]string, m map[string]string) bool {
+func mapIsSubset(sub map[string]interface{}, m map[string]interface{}) bool {
 	for k, v := range sub {
 		val, ok := m[k]
 		if !ok {

@@ -21,16 +21,14 @@ import (
 	"github.com/argoproj/argo-events/pkg/event"
 )
 
-func (sc *sensorCtx) processSignal(name string, event event.Event) (*v1alpha1.NodeStatus, error) {
+func (sc *sensorCtx) processSignal(name string, event *event.Event) {
 	sc.log.Info().Str("signal-name", name).Msg("processing signal")
 	node := getNodeByName(sc.sensor, name)
-	if node == nil {
-		node = sc.initializeNode(signal, v1alpha1.NodeTypeSignal, v1alpha1.NodePhaseNew)
-		// we can skip active state.
-	}
 	node.LatestEvent = &v1alpha1.EventWrapper{
-		Event: event,
+		Event: *event,
 		Seen: true,
 	}
-	return soc.markNodePhase(signal, v1alpha1.NodePhaseComplete, "signal processing completed"), nil
+	node.Message = "signal processing completed"
+	sc.sensor.Status.Nodes[node.ID] = *node
+	sc.updateNodePhase(name, v1alpha1.NodePhaseComplete)
 }

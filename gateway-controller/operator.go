@@ -88,6 +88,10 @@ func (gwc *gwOperationCtx) operate() error {
 										Name: common.TransformerPortEnvVar,
 										Value: fmt.Sprintf("%d", common.TransformerPort),
 									},
+									{
+										Name: common.GatewayConfigMapEnvVar,
+										Value: gwc.gw.Spec.ConfigMap,
+									},
 								},
 							},
 							{
@@ -102,10 +106,6 @@ func (gwc *gwOperationCtx) operate() error {
 									{
 										Name: common.EnvVarNamespace,
 										Value: gwc.gw.Namespace,
-									},
-									{
-										Name: common.GatewayEnvVarConfigMap,
-										Value: gwc.gw.Spec.ConfigMap,
 									},
 									{
 										Name: common.EventSource,

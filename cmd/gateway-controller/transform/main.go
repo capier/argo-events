@@ -4,8 +4,6 @@ import (
 	"os"
 	"github.com/argoproj/argo-events/common"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"github.com/argoproj/argo-events/gateway-controller/transform"
 	"net/http"
 	"fmt"
@@ -13,21 +11,12 @@ import (
 	"log"
 )
 
-var(
-	kubeConfig string
-)
-
-func getClientConfig(kubeConfig string) (*rest.Config, error) {
-	if kubeConfig != "" {
-		return clientcmd.BuildConfigFromFlags("", kubeConfig)
-	}
-	return rest.InClusterConfig()
-}
 
 func main() {
-	restConfig, err := getClientConfig(kubeConfig)
+	kubeConfig, _ := os.LookupEnv(common.EnvVarKubeConfig)
+	restConfig, err := common.GetClientConfig(kubeConfig)
 	if err != nil {
-		log.Fatalf("%+v", err)
+		panic(err)
 	}
 	kubeClient := kubernetes.NewForConfigOrDie(restConfig)
 
@@ -43,7 +32,7 @@ func main() {
 		panic("No namespace provided.")
 	}
 
-	configmap, _ := os.LookupEnv(common.GatewayEnvVarConfigMap)
+	configmap, _ := os.LookupEnv(common.GatewayConfigMapEnvVar)
 	if configmap == "" {
 		panic("No configmap provided")
 	}

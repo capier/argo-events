@@ -3,10 +3,9 @@ package sensor_controller
 import (
 	"encoding/json"
 	"github.com/argoproj/argo-events/common"
-	v1alpha1 "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
+	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	"github.com/argoproj/argo-events/pkg/event"
 	sv1 "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
-	pb "github.com/argoproj/argo-events/proto"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/context"
 	"k8s.io/client-go/kubernetes"
@@ -15,53 +14,55 @@ import (
 	"net/http"
 	"github.com/rs/zerolog"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type sensorCtx struct {
+	// sensorClient is the client for sensor
 	sensorClient sv1.ArgoprojV1alpha1Interface
 
+	// kubeClient is the kubernetes client
 	kubeClient kubernetes.Interface
 
+	// config is the cluster config
 	config  *rest.Config
 
-	stream *pb.SensorUpdate_UpdateSensorClient
-
+	// sensor object
 	sensor *v1alpha1.Sensor
 
+	// http server which exposes the sensor to gateway/s
 	server *http.Server
 
+	// logger for the sensor
 	log zerolog.Logger
 }
 
-func NewSensorContext(sensorClient sv1.ArgoprojV1alpha1Interface, kubeClient kubernetes.Interface, config  *rest.Config,
-	stream *pb.SensorUpdate_UpdateSensorClient, sensor *v1alpha1.Sensor, log zerolog.Logger) *sensorCtx {
+func NewSensorContext(sensorClient sv1.ArgoprojV1alpha1Interface, kubeClient kubernetes.Interface, config  *rest.Config, sensor *v1alpha1.Sensor, log zerolog.Logger) *sensorCtx {
 	return &sensorCtx{
 		sensorClient: sensorClient,
 		kubeClient: kubeClient,
 		config: config,
-		stream: stream,
 		sensor: sensor,
 		log: log,
 	}
 }
 
-// to resync
+// resyncs the sensor object
 func (sc *sensorCtx) watchSensorUpdates() {
 	watcher, err := sc.sensorClient.Sensors(sc.sensor.Namespace).Watch(metav1.ListOptions{})
 	if err != nil {
 		sc.log.Panic().Err(err).Msg("failed to watch sensor object")
 	}
 	for update := range watcher.ResultChan() {
-		// do we need a deep copy?
 		sc.sensor = update.Object.(*v1alpha1.Sensor).DeepCopy()
 	}
 }
 
-func (sc *sensorCtx) StartHttpServer() *http.Server {
+func (sc *sensorCtx) StartNotificationHandler() *http.Server {
 	// watch sensor updates
 	go sc.watchSensorUpdates()
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", common.SensorServicePort)}
-	http.HandleFunc("/", sc.handleSignalNotification)
+	http.HandleFunc("/", sc.handleGatewayNotification)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			// cannot panic, because this probably is an intentional close
@@ -71,8 +72,8 @@ func (sc *sensorCtx) StartHttpServer() *http.Server {
 	return srv
 }
 
-// Hanldes notifications from gateway/s
-func (sc *sensorCtx) handleSignalNotification(w http.ResponseWriter, r *http.Request) {
+// Handles notifications from gateway/s
+func (sc *sensorCtx) handleGatewayNotification(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var gatewayNotification *event.Event
 	err := decoder.Decode(gatewayNotification)
@@ -94,12 +95,15 @@ func (sc *sensorCtx) handleSignalNotification(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// update the signal state
-	sc.updateNodePhase(gatewayNotification.Ctx.Source, v1alpha1.NodePhaseComplete)
+	// process the signal
+	sc.processSignal(gatewayNotification.Ctx.Source, gatewayNotification)
 	sc.sensor, err = sc.updateSensor()
 	if err != nil {
-		sc.log.Error().Str("signal-name", gatewayNotification.Ctx.Source).Msg("failed to update signal node state")
-		return
+		err = sc.reapplyUpdate()
+		if err != nil {
+			sc.log.Error().Str("signal-name", gatewayNotification.Ctx.Source).Msg("failed to update signal node state")
+			return
+		}
 	}
 
 	// check if all signals are completed
@@ -116,18 +120,30 @@ func (sc *sensorCtx) handleSignalNotification(w http.ResponseWriter, r *http.Req
 				sc.updateNodePhase(trigger.Name, v1alpha1.NodePhaseError)
 				sc.updateNodePhase(sc.sensor.Name, v1alpha1.NodePhaseError)
 				// update the sensor object with error state
-				sc.sensor, err = sc.sensorClient.Sensors(sc.sensor.Namespace).Update(sc.sensor)
+				sc.sensor, err = sc.updateSensor()
 				if err != nil {
-					sc.log.Error().Err(err).Msg("failed to update sensor phase")
+					err = sc.reapplyUpdate()
+					if err != nil {
+						sc.log.Error().Err(err).Msg("failed to update sensor phase")
+						return
+					}
 				}
-				return
 			}
 			// update trigger state
 			sc.updateNodePhase(trigger.Name, v1alpha1.NodePhaseComplete)
 			sc.sensor, err = sc.updateSensor()
 			if err != nil {
-				sc.log.Error().Err(err).Msg("failed to update sensor after trigger completion")
+				err = sc.reapplyUpdate()
+				if err != nil {
+					sc.log.Error().Err(err).Msg("failed to update trigger completion state")
+					return
+				}
 			}
+		}
+
+		if !sc.sensor.Spec.Repeat {
+			// todo: unsubscribe from pub-sub system
+			sc.server.Shutdown(context.Background())
 		}
 	}
 }
@@ -142,20 +158,21 @@ func (sc *sensorCtx) updateNodePhase(name string, phase v1alpha1.NodePhase) {
 	sc.sensor.Status.Nodes[sc.sensor.NodeID(name)] = node
 }
 
-func (sc *sensorCtx) performAction() {
-	var action *pb.SensorEvent
-	err := (*sc.stream).RecvMsg(action)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to get action message from sensor controller")
-	}
-	switch common.TriggerAction(action.Type) {
-	case common.TriggerAndRepeat:
-		log.Debug().Msg("keep sensor server running")
-	case common.TriggerAndStop:
-		// Close the gRPC stream and shutdown sensor http server
-		(*sc.stream).CloseSend()
-		sc.server.Shutdown(context.Background())
-	default:
-		log.Warn().Str("action-type", action.Type).Msg("unknown action type")
-	}
+func (sc *sensorCtx) reapplyUpdate() error {
+	return wait.ExponentialBackoff(common.DefaultRetry, func() (bool, error) {
+		sClient := sc.sensorClient.Sensors(sc.sensor.Namespace)
+		s, err := sClient.Get(sc.sensor.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		s.Status = sc.sensor.Status
+		sc.sensor, err = sClient.Update(s)
+		if err != nil {
+			if !common.IsRetryableKubeAPIError(err) {
+				return false, err
+			}
+			return false, nil
+		}
+		return true, nil
+	})
 }

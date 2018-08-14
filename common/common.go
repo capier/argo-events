@@ -93,7 +93,7 @@ const (
 	GatewayLabelKeyPhase = gateway.FullName + "/phase"
 
 	// GatewayEnvVarConfigMap is the name of the configmap to use for the gateway-controller-controller
-	GatewayEnvVarConfigMap = "GATEWAY_CONFIG_MAP"
+	GatewayConfigMapEnvVar = "GATEWAY_CONFIG_MAP"
 
 	GatewayEventTransformerImage = "argoproj/event-transformer"
 )

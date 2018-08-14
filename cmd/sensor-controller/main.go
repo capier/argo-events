@@ -38,13 +38,7 @@ func main() {
 		configMap = common.DefaultConfigMapName(common.DefaultSensorControllerDeploymentName)
 	}
 
-	// stream signal micro services
-	signalMgr, err := sensor_controller.NewSignalManager()
-	if err != nil {
-		panic(err)
-	}
-
-	controller := sensor_controller.NewSensorController(restConfig, configMap, signalMgr)
+	controller := sensor_controller.NewSensorController(restConfig, configMap)
 	err = controller.ResyncConfig()
 	if err != nil {
 		panic(err)

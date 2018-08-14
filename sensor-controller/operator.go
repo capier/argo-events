@@ -23,14 +23,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	client "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	pb "github.com/argoproj/argo-events/proto"
 )
 
 // the context of an operation on a sensor.
@@ -47,13 +46,10 @@ type sOperationCtx struct {
 
 	// reference to the sensor sensor-controller
 	controller *SensorController
-
-	// Communication between sensor controller and sensor pod
-	sensorCh chan pb.SensorEvent
 }
 
 // newSensorOperationCtx creates and initializes a new sOperationCtx object
-func newSensorOperationCtx(s *v1alpha1.Sensor, controller *SensorController, sensorCh chan pb.SensorEvent) *sOperationCtx {
+func newSensorOperationCtx(s *v1alpha1.Sensor, controller *SensorController) *sOperationCtx {
 	return &sOperationCtx{
 		s:       s.DeepCopy(),
 		updated: false,
@@ -62,7 +58,6 @@ func newSensorOperationCtx(s *v1alpha1.Sensor, controller *SensorController, sen
 			"namespace": s.Namespace,
 		}),
 		controller: controller,
-		sensorCh: sensorCh,
 	}
 }
 
@@ -103,7 +98,7 @@ func (soc *sOperationCtx) operate() error {
 		// Create a ClusterIP service to expose sensor in cluster
 		// For now, sensor will receive event notifications through http server.
 		// And it will communicate the updates back to sensor controller.
-		sensorDeployment := &appv1.Deployment{
+		sensorJob := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: soc.s.Name,
 				Namespace: soc.s.Namespace,
@@ -111,7 +106,7 @@ func (soc *sOperationCtx) operate() error {
 					"name": soc.s.Name,
 				},
 			},
-			Spec: appv1.DeploymentSpec{
+			Spec: batchv1.JobSpec{
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
@@ -149,10 +144,10 @@ func (soc *sOperationCtx) operate() error {
 				},
 			},
 		}
-		// Create sensor deployment
-		_, err = soc.controller.kubeClientset.AppsV1().Deployments(soc.s.Namespace).Create(sensorDeployment)
+		// Create sensor job
+		_, err = soc.controller.kubeClientset.BatchV1().Jobs(soc.s.Namespace).Create(sensorJob)
 		if err != nil {
-			soc.log.Errorf("failed to create sensor deployment. Err: %+v", err)
+			soc.log.Errorf("failed to create sensor job. Err: %+v", err)
 			return err
 		}
 		_, err = soc.controller.kubeClientset.CoreV1().Services(soc.s.Namespace).Create(sensorSvc)
@@ -178,7 +173,6 @@ func (soc *sOperationCtx) operate() error {
 			}
 		}
 	}
-
 	return nil
 }
 
