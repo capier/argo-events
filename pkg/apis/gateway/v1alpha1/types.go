@@ -23,14 +23,30 @@ type GatewayList struct {
 
 // GatewaySpec represents gateway-controller specifications
 type GatewaySpec struct {
+	// Image is the image provided by user
 	Image     string `json:"image" protobuf:"bytes,1,opt,name=image"`
+
+	// Command is command to run user's image
 	Command   string `json:"command" protobuf:"bytes,2,opt,name=command"`
-	ConfigMap string `json:"config_map" protobuf:"bytes,3,opt,name=configmap"`
-	Secret    string `json:"secret" protobuf:"bytes,4,opt,name=secret"`
+
+	// Todo: does this needed to specified separately?
+	// ConfigMap is name of the configmap user code can access if required
+	ConfigMap string `json:"config_map,omitempty" protobuf:"bytes,3,opt,name=configmap"`
+
+	// Type is type of the gateway used as event type
 	Type      string `json:"type" protobuf:"bytes,5,opt,name=type"`
-	Service   Service   `json:"exposed" protobuf:"bytes,6,opt,name=service"`
-	Sensor    string `json:"sensor" protobuf:"bytes,7,opt,name=sensor"`
-	ServiceAccountName string `json:"service_account_name" protobuf:"bytes,8,opt,name=service_account_name"`
+
+	// Version is used for marking event version
+	Version  string `json:"version" protobuf:"bytes,6,opt,name=version"`
+
+	// Service is the name of the service to expose the gateway
+	Service   Service   `json:"exposed" protobuf:"bytes,7,opt,name=service"`
+
+	// Sensors are list of sensors to dispatch events to
+	Sensors    []string `json:"sensor" protobuf:"bytes,8,opt,name=sensor"`
+
+	// ServiceAccountName is name of service account to run the gateway
+	ServiceAccountName string `json:"service_account_name" protobuf:"bytes,9,opt,name=service_account_name"`
 }
 
 // NodePhase is the label for the condition of a node
@@ -60,9 +76,13 @@ type GatewayStatus struct {
 
 // Service exposed gateway to outside cluster or in cluster components depending on it's type.
 type Service struct {
+	// Type is type of the service. Either ClusterIP, NodePort, LoadBalancer or ExternalName
+	// See https://kubernetes.io/docs/concepts/services-networking/service/
 	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
 
+	// Port is port exposed to components outside cluster
 	Port int32 `json:"port" protobuf:"bytes,2,opt,name=port"`
 
+	// TargetPort is the gateway http server port
 	TargetPort int `json:"target_port" protobuf:"bytes,3,opt,name=target_port"`
 }

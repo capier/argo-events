@@ -4,7 +4,7 @@ import (
 	"github.com/argoproj/argo-events/pkg/apis/gateway/v1alpha1"
 	client "github.com/argoproj/argo-events/pkg/gateway-client/clientset/versioned/typed/gateway/v1alpha1"
 	zlog "github.com/rs/zerolog"
-	k8v1 "k8s.io/api/apps/v1"
+	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -14,6 +14,7 @@ import (
 	"github.com/argoproj/argo-events/common"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"strings"
 )
 
 // the context of an operation on a gateway-controller.
@@ -48,7 +49,7 @@ func newGatewayOperationCtx(gw *v1alpha1.Gateway, controller *GatewayController)
 func (goc *gwOperationCtx) operate() error {
 	goc.log.Info().Str("name", goc.gw.Name).Msg("operating on the gateway")
 
-	// validate gateway
+	// validate the gateway
 	err := goc.validate()
 	if err != nil {
 		goc.log.Error().Err(err).Msg("gateway validation failed")
@@ -61,7 +62,38 @@ func (goc *gwOperationCtx) operate() error {
 	case v1alpha1.NodePhaseNew:
 		// Update node phase to running
 		goc.gw.Status = v1alpha1.NodePhaseRunning
-		gatewayDeployment := &k8v1.Deployment{
+
+		// declare the configuration map for gateway transformer
+		gatewayConfigMap := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: goc.gw.Name + "-gateway-transformer-configmap",
+				Namespace: goc.gw.Namespace,
+			},
+			Data: map[string]string{
+				common.EventSource: goc.gw.Name,
+				common.EventTypeVersion: goc.gw.Spec.Version,
+				common.EventType: goc.gw.Spec.Type,
+				common.SensorList:  strings.Join(goc.gw.Spec.Sensors, ","),
+			},
+		}
+
+		// create gateway transformer configmap
+		_, err := goc.kubeClientset.CoreV1().ConfigMaps(goc.gw.Namespace).Create(gatewayConfigMap)
+		if err != nil {
+			goc.log.Error().Err(err).Msg("failed to create transformer gateway configuration")
+			// mark gateway as failed
+			goc.gw.Status = v1alpha1.NodePhaseError
+			goc.gw, err = gatewayClient.Update(goc.gw)
+			if err != nil {
+				err = goc.reapplyUpdate(gatewayClient)
+				if err != nil {
+					goc.log.Error().Str("gateway", goc.gw.Name).Msg("failed to update gateway")
+					return err
+				}
+			}
+		}
+
+		gatewayDeployment := &appv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      goc.gw.Name + "-deployment",
 				Namespace: goc.gw.Namespace,
@@ -74,7 +106,7 @@ func (goc *gwOperationCtx) operate() error {
 					},
 				},
 			},
-			Spec: k8v1.DeploymentSpec{
+			Spec: appv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						ServiceAccountName: goc.gw.Spec.ServiceAccountName,
@@ -101,12 +133,12 @@ func (goc *gwOperationCtx) operate() error {
 								Image:           common.GatewayEventTransformerImage,
 								Env: []corev1.EnvVar{
 									{
-										Name:  common.EnvVarNamespace,
-										Value: goc.gw.Namespace,
+										Name:  common.GatewayConfigMapEnvVar,
+										Value: goc.gw.Name + "-gateway-transformer-configmap",
 									},
 									{
-										Name:  common.EventSource,
-										Value: goc.gw.Name,
+										Name: common.EnvVarNamespace,
+										Value: goc.gw.Namespace,
 									},
 								},
 							},
@@ -118,7 +150,7 @@ func (goc *gwOperationCtx) operate() error {
 
 		// we can now create the gateway deployment.
 		// depending on user configuration gateway will be exposed outside the cluster or intra-cluster.
-		_, err := goc.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Create(gatewayDeployment)
+		_, err = goc.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Create(gatewayDeployment)
 		if err != nil {
 			goc.log.Error().Str("gateway", goc.gw.Name).Err(err).Msg("failed gateway deployment")
 			goc.gw.Status = v1alpha1.NodePhaseError

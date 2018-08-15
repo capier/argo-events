@@ -22,13 +22,13 @@ import (
 )
 
 func (sc *sensorCtx) processSignal(name string, event *sv1alpha.Event) {
-	sc.log.Info().Str("signal-name", name).Msg("processing signal")
+	sc.log.Info().Str("signal-name", name).Msg("processing the signal")
 	node := getNodeByName(sc.sensor, name)
 	node.LatestEvent = &v1alpha1.EventWrapper{
 		Event: *event,
 		Seen: true,
 	}
 	node.Message = "signal processing completed"
+	node.Phase = v1alpha1.NodePhaseComplete
 	sc.sensor.Status.Nodes[node.ID] = *node
-	sc.updateNodePhase(name, v1alpha1.NodePhaseComplete)
 }

@@ -63,7 +63,7 @@ const (
 
 )
 
-// GATEWAY CONTROLLER CONSTANTS
+// GATEWAY CONSTANTS
 const (
 	// DefaultGatewayControllerDeploymentName is the default deployment name of the gateway-controller-controller
 	DefaultGatewayControllerDeploymentName = "gateway-controller"
@@ -78,13 +78,10 @@ const (
 	// GatewayLabelKeyPhase is a label applied to gateways to indicate the current phase of the gateway-controller (for filtering purposes)
 	GatewayLabelKeyPhase = gateway.FullName + "/phase"
 
-	// GatewayConfigMapEnvVar is used for gateway configuration
+	// GatewayConfigMapEnvVar is used for gateway  configuration
 	GatewayConfigMapEnvVar = "GATEWAY_CONFIG_MAP"
 
 	GatewayEventTransformerImage = "metalgearsolid/event-transformer"
-
-	// GatewayName is name of the gateway
-	GatewayName = "GATEWAY_NAME"
 
 	//  TransformerPortEnvVar is the env var for http server port
 	TransformerPortEnvVar = "TRANSFORMER_PORT"
@@ -92,14 +89,17 @@ const (
 	// TransformerPort is http server port where transformer service is running
 	TransformerPort = 9300
 
-	// EventType is the type of event
+	// EventTypeEnvVar contains the type of event
 	EventType = "EVENT_TYPE"
 
-	// EventTypeVersion is the event type version
+	// EnvVarEventTypeVersion contains the event type version
 	EventTypeVersion = "EVENT_TYPE_VERSION"
 
-	// Source where the event originated from
-	EventSource = "SOURCE"
+	// EnvVarEventSource contains the name of the gateway
+	EventSource = "EVENT_SOURCE"
+
+	// SensorList is list of sensor to dispatch message to
+	SensorList = "SENSOR_LIST"
 )
 
 // CloudEvents constants

@@ -16,18 +16,18 @@ import (
 	sv1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
-type GatewayConfig struct {
+type EventConfig struct {
 	// EventType is type of the event
 	EventType string
 
 	// EventTypeVersion is the version of the `eventType`
 	EventTypeVersion string
 
-	// Source
-	Source string
+	// Source of the event
+	EventSource string
 
-	// Sensor
-	Sensor string
+	// Sensors to dispatch the event to
+	Sensors []string
 }
 
 type tOperationCtx struct {
@@ -38,12 +38,11 @@ type tOperationCtx struct {
 	log zlog.Logger
 
 	// Event configuration
-	Config GatewayConfig
+	Config EventConfig
 
 	// Kubernetes clientset
 	kubeClientset kubernetes.Interface
 }
-
 
 func NewTransformOperationContext(name string, namespace string, clientset kubernetes.Interface) *tOperationCtx {
 	return &tOperationCtx{
@@ -52,7 +51,6 @@ func NewTransformOperationContext(name string, namespace string, clientset kuber
 		log:           zlog.New(os.Stdout).With().Str("gateway-controller-name", name).Logger(),
 	}
 }
-
 
 // Transform request transforms http request payload into CloudEvent
 func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
@@ -74,7 +72,7 @@ func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
 			EventType:          toc.Config.EventType,
 			EventTypeVersion:   toc.Config.EventTypeVersion,
 			Source:             &sv1alpha.URI{
-									Host:   toc.Config.Source,
+									Host:   toc.Config.EventSource,
 								},
 		},
 		Payload: payload,
@@ -83,30 +81,36 @@ func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
 	return ce, nil
 }
 
+// dispatches the event to configured sensor
 func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
 	sensorService, err := toc.kubeClientset.CoreV1().Services(toc.Namespace).Get(toc.Config.Sensor, metav1.GetOptions{})
 	if err != nil {
 		toc.log.Error().Str("sensor-svc", toc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
 		return err
 	}
+
 	if sensorService.Spec.ClusterIP == "" {
 		toc.log.Error().Str("sensor-service", toc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
 		return err
 	}
 	toc.log.Debug().Str("sensor-service-ip", sensorService.Spec.ClusterIP).Msg("sensor service ip")
+
 	eventBytes, err := json.Marshal(ce)
 	if err != nil {
 		toc.log.Error().Err(err).Msg("failed to get event bytes")
 		return err
 	}
+
 	_, err = http.Post(sensorService.Spec.ClusterIP, "application/json", bytes.NewReader(eventBytes))
 	if err != nil {
 		toc.log.Error().Err(err).Msg("failed to dispatch event to the sensor")
 		return err
 	}
+
 	return nil
 }
 
+// transforms the event into cloudevent
 func (toc *tOperationCtx) HandleTransformRequest(w http.ResponseWriter, r *http.Request) {
 	ce, err := toc.transform(r)
 	if err != nil {

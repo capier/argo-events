@@ -28,7 +28,7 @@ func (in *Gateway) DeepCopyInto(out *Gateway) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	out.Spec = in.Spec
+	in.Spec.DeepCopyInto(&out.Spec)
 	return
 }
 
@@ -87,6 +87,11 @@ func (in *GatewayList) DeepCopyObject() runtime.Object {
 func (in *GatewaySpec) DeepCopyInto(out *GatewaySpec) {
 	*out = *in
 	out.Service = in.Service
+	if in.Sensors != nil {
+		in, out := &in.Sensors, &out.Sensors
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

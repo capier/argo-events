@@ -108,13 +108,14 @@ func (sc *sensorCtx) handleSignals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// check if all signals are completed
-	completed := sc.sensor.AreAllNodesSuccess(v1alpha1.NodeTypeSignal) && sc.sensor.Status.Phase != v1alpha1.NodePhaseComplete
+	// to trigger the sensor action/s we first need to check if all signals are completed and sensor is active
+	completed := sc.sensor.AreAllNodesSuccess(v1alpha1.NodeTypeSignal) && sc.sensor.Status.Phase == v1alpha1.NodePhaseActive
 	if completed {
 		sc.log.Info().Msg("all signals are processed")
 		// trigger action/s
 		for _, trigger := range sc.sensor.Spec.Triggers {
 			sc.updateNodePhase(trigger.Name, v1alpha1.NodePhaseActive)
+			// update the sensor for marking trigger as active
 			sc.sensor, err = sc.updateSensor()
 			err := sc.executeTrigger(trigger)
 			if err != nil {
@@ -131,7 +132,8 @@ func (sc *sensorCtx) handleSignals(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			// update trigger state
+
+			// mark trigger as complete.
 			sc.updateNodePhase(trigger.Name, v1alpha1.NodePhaseComplete)
 			sc.sensor, err = sc.updateSensor()
 			if err != nil {
