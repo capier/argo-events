@@ -18,7 +18,7 @@ package sensor_controller
 
 import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
-	"github.com/argoproj/argo-events/pkg/event"
+	v1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	"fmt"
 	"strings"
 	"encoding/json"
@@ -47,13 +47,13 @@ func getNodeByName(sensor *v1alpha1.Sensor, nodename string) *v1alpha1.NodeStatu
 
 // util method to render an event's data as a JSON []byte
 // json is a subset of yaml so this should work...
-func renderEventDataAsJSON(e *event.Event) ([]byte, error) {
+func renderEventDataAsJSON(e *v1alpha.Event) ([]byte, error) {
 	if e == nil {
 		return nil, fmt.Errorf("event is nil")
 	}
 	raw := e.Payload
 	// contentType is formatted as: '{type}; charset="xxx"'
-	contents := strings.Split(e.Ctx.ContentType, ";")
+	contents := strings.Split(e.Context.ContentType, ";")
 	switch contents[0] {
 	case MediaTypeJSON:
 		if isJSON(raw) {
@@ -67,7 +67,7 @@ func renderEventDataAsJSON(e *event.Event) ([]byte, error) {
 		}
 		return data, nil
 	default:
-		return nil, fmt.Errorf("unsupported event content type: %s", e.Ctx.ContentType)
+		return nil, fmt.Errorf("unsupported event content type: %s", e.Context.ContentType)
 	}
 }
 

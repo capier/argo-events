@@ -29,14 +29,6 @@ const (
 	EnvVarKubeConfig = "KUBE_CONFIG"
 )
 
-type TriggerAction string
-
-const (
-	TriggerAndStop TriggerAction = "TriggerAndStop"
-
-	TriggerAndRepeat TriggerAction = "TriggerAndRepeat"
-)
-
 // SENSOR CONTROLLER CONSTANTS
 const (
 	// DefaultSensorControllerDeploymentName is the default deployment name of the sensor sensor-controller
@@ -58,14 +50,8 @@ const (
 	// EnvVarConfigMap is the name of the configmap to use for the sensor-controller
 	EnvVarConfigMap = "SENSOR_CONFIG_MAP"
 
-	// WebhookServicePort is the port of the service
-	WebhookServicePort = 9000
-
-	// WebhookServiceTargetPort is the port of the targeted job
-	WebhookServiceTargetPort = 9000
-
 	// Sensor image is the image used to deploy sensor.
-	SensorImage = "argoproj/sensor"
+	SensorImage = "metalgearsolid/sensor"
 
 	// Sensor service port
 	SensorServicePort = 9300
@@ -80,7 +66,7 @@ const (
 // GATEWAY CONTROLLER CONSTANTS
 const (
 	// DefaultGatewayControllerDeploymentName is the default deployment name of the gateway-controller-controller
-	DefaultGatewayControllerDeploymentName = "gateway-controller-controller"
+	DefaultGatewayControllerDeploymentName = "gateway-controller"
 
 	// GatewayControllerConfigMapKey is the key in the configmap to retrieve gateway-controller configuration from.
 	// Content encoding is expected to be YAML.
@@ -92,20 +78,19 @@ const (
 	// GatewayLabelKeyPhase is a label applied to gateways to indicate the current phase of the gateway-controller (for filtering purposes)
 	GatewayLabelKeyPhase = gateway.FullName + "/phase"
 
-	// GatewayEnvVarConfigMap is the name of the configmap to use for the gateway-controller-controller
+	// GatewayConfigMapEnvVar is used for gateway configuration
 	GatewayConfigMapEnvVar = "GATEWAY_CONFIG_MAP"
 
-	GatewayEventTransformerImage = "argoproj/event-transformer"
-)
+	GatewayEventTransformerImage = "metalgearsolid/event-transformer"
 
-// CloudEvents constants
-const (
-	// CloudEventsVersion is the version of the CloudEvents spec targeted
-	// by this library.
-	CloudEventsVersion = "0.1"
+	// GatewayName is name of the gateway
+	GatewayName = "GATEWAY_NAME"
 
-	// HeaderContentType is the standard HTTP header "Content-Type"
-	HeaderContentType = "Content-Type"
+	//  TransformerPortEnvVar is the env var for http server port
+	TransformerPortEnvVar = "TRANSFORMER_PORT"
+
+	// TransformerPort is http server port where transformer service is running
+	TransformerPort = 9300
 
 	// EventType is the type of event
 	EventType = "EVENT_TYPE"
@@ -117,14 +102,12 @@ const (
 	EventSource = "SOURCE"
 )
 
-// Transformer constants
-const(
-	// GatewayName is name of the gateway
-	GatewayName = "GATEWAY_NAME"
+// CloudEvents constants
+const (
+	// CloudEventsVersion is the version of the CloudEvents spec targeted
+	// by this library.
+	CloudEventsVersion = "0.1"
 
-	//  TransformerPortEnvVar is the env var for http server port
-	TransformerPortEnvVar = "TRANSFORMER_PORT"
-
-	// TransformerPort is http server port where transformer service is running
-	TransformerPort = 9300
+	// HeaderContentType is the standard HTTP header "Content-Type"
+	HeaderContentType = "Content-Type"
 )

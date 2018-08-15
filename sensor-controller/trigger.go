@@ -26,7 +26,7 @@ import (
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	"github.com/argoproj/argo-events/store"
-	"github.com/argoproj/argo-events/pkg/event"
+	v1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
 // execute the trigger
@@ -126,8 +126,8 @@ func (sc *sensorCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj
 
 // helper method to extract the events from the signals associated with the resource params
 // returns a map of the events keyed by the signal name
-func (sc *sensorCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]event.Event {
-	events := make(map[string]event.Event)
+func (sc *sensorCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]v1alpha.Event {
+	events := make(map[string]v1alpha.Event)
 	for _, param := range params {
 		if param.Src != nil {
 			node := getNodeByName(sc.sensor, param.Src.Signal)

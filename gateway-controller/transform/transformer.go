@@ -8,16 +8,15 @@ import (
 	suuid "github.com/satori/go.uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
-	"k8s.io/apimachinery/pkg/util/wait"
 	zlog "github.com/rs/zerolog"
 	"k8s.io/client-go/kubernetes"
 	"encoding/json"
 	"bytes"
 	"os"
-	"github.com/argoproj/argo-events/pkg/event"
+	sv1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
-type EventConfig struct {
+type GatewayConfig struct {
 	// EventType is type of the event
 	EventType string
 
@@ -31,7 +30,7 @@ type EventConfig struct {
 	Sensor string
 }
 
-type eOperationCtx struct {
+type tOperationCtx struct {
 	// Namespace is namespace where gateway-controller is deployed
 	Namespace string
 
@@ -39,15 +38,15 @@ type eOperationCtx struct {
 	log zlog.Logger
 
 	// Event configuration
-	Config EventConfig
+	Config GatewayConfig
 
 	// Kubernetes clientset
 	kubeClientset kubernetes.Interface
 }
 
 
-func NewEventOperationContext(name string, namespace string, clientset kubernetes.Interface) *eOperationCtx {
-	return &eOperationCtx{
+func NewTransformOperationContext(name string, namespace string, clientset kubernetes.Interface) *tOperationCtx {
+	return &tOperationCtx{
 		Namespace:     namespace,
 		kubeClientset: clientset,
 		log:           zlog.New(os.Stdout).With().Str("gateway-controller-name", name).Logger(),
@@ -56,8 +55,8 @@ func NewEventOperationContext(name string, namespace string, clientset kubernete
 
 
 // Transform request transforms http request payload into CloudEvent
-func (eoc *eOperationCtx) transform(r *http.Request) (*event.Event, error) {
-	// Generate event id
+func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
+	// Generate an event id
 	eventId := suuid.Must(suuid.NewV4())
 	payload, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -66,15 +65,17 @@ func (eoc *eOperationCtx) transform(r *http.Request) (*event.Event, error) {
 	}
 
 	// Create an CloudEvent
-	ce := &event.Event{
-		Ctx: event.EventContext{
+	ce := &sv1alpha.Event{
+		Context: sv1alpha.EventContext{
 			CloudEventsVersion: common.CloudEventsVersion,
 			EventID:            fmt.Sprintf("%x", eventId),
 			ContentType:        r.Header.Get(common.HeaderContentType),
-			EventTime:          time.Now(),
-			EventType:          eoc.Config.EventType,
-			EventTypeVersion:   eoc.Config.EventTypeVersion,
-			Source:             eoc.Config.Source,
+			EventTime:          metav1.Time{Time: time.Now().UTC()},
+			EventType:          toc.Config.EventType,
+			EventTypeVersion:   toc.Config.EventTypeVersion,
+			Source:             &sv1alpha.URI{
+									Host:   toc.Config.Source,
+								},
 		},
 		Payload: payload,
 	}
@@ -82,59 +83,38 @@ func (eoc *eOperationCtx) transform(r *http.Request) (*event.Event, error) {
 	return ce, nil
 }
 
-func (eoc *eOperationCtx) sendEvent(ce *event.Event) error {
-	sensorService, err := eoc.kubeClientset.CoreV1().Services(eoc.Namespace).Get(eoc.Config.Sensor, metav1.GetOptions{})
+func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
+	sensorService, err := toc.kubeClientset.CoreV1().Services(toc.Namespace).Get(toc.Config.Sensor, metav1.GetOptions{})
 	if err != nil {
-		eoc.log.Error().Str("sensor-svc", eoc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
+		toc.log.Error().Str("sensor-svc", toc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
 		return err
 	}
 	if sensorService.Spec.ClusterIP == "" {
-		eoc.log.Error().Str("sensor-svc", eoc.Config.Sensor).Msg("failed to get cluster ip.")
-		// Retry to get cluster ip
-		err = eoc.connectSensorService()
-		if err != nil {
-			eoc.log.Error().Str("sensor-svc", eoc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
-			return err
-		}
+		toc.log.Error().Str("sensor-service", toc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
+		return err
 	}
-	eoc.log.Debug().Str("sensor-svc-ip", sensorService.Spec.ClusterIP).Msg("sensor service cluster ip")
+	toc.log.Debug().Str("sensor-service-ip", sensorService.Spec.ClusterIP).Msg("sensor service ip")
 	eventBytes, err := json.Marshal(ce)
 	if err != nil {
-		eoc.log.Error().Err(err).Msg("failed to marshal cloud event")
+		toc.log.Error().Err(err).Msg("failed to get event bytes")
 		return err
 	}
 	_, err = http.Post(sensorService.Spec.ClusterIP, "application/json", bytes.NewReader(eventBytes))
 	if err != nil {
-		eoc.log.Error().Err(err).Msg("failed to send the event request to sensor")
+		toc.log.Error().Err(err).Msg("failed to dispatch event to the sensor")
 		return err
 	}
 	return nil
 }
 
-func (eoc *eOperationCtx) connectSensorService() error {
-	return wait.ExponentialBackoff(common.DefaultRetry, func() (bool, error) {
-		sensorService, err := eoc.kubeClientset.CoreV1().Services(eoc.Namespace).Get(eoc.Config.Sensor, metav1.GetOptions{})
-		if err != nil {
-			eoc.log.Error().Str("sensor-svc", eoc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
-			return false, err
-		} else {
-			if sensorService.Spec.ClusterIP == "" {
-				return false, nil
-			} else {
-				return true, nil
-			}
-		}
-	})
-}
-
-func (eoc *eOperationCtx) HandleTransformRequest(w http.ResponseWriter, r *http.Request) {
-	ce, err := eoc.transform(r)
+func (toc *tOperationCtx) HandleTransformRequest(w http.ResponseWriter, r *http.Request) {
+	ce, err := toc.transform(r)
 	if err != nil {
-		eoc.log.Error().Err(err).Msg("failed to transform user event into CloudEvent")
+		toc.log.Error().Err(err).Msg("failed to transform user event into CloudEvent")
 		return
 	}
-	err = eoc.sendEvent(ce)
+	err = toc.dispatchTransformedEvent(ce)
 	if err != nil {
-		eoc.log.Error().Err(err).Msg("failed to send cloud event to sensor")
+		toc.log.Error().Err(err).Msg("failed to send cloud event to sensor")
 	}
 }

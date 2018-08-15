@@ -27,11 +27,6 @@ func main() {
 		panic("sensor namespace is not provided")
 	}
 
-	serverAddr, _ := os.LookupEnv(common.DefaultSensorControllerDeploymentName)
-	if serverAddr == "" {
-		panic("sensor controller name not provided")
-	}
-
 	log := zerolog.New(os.Stdout).With().Str("sensor-name", sensorName).Logger()
 
 	sensorClient, err := sv1.NewForConfig(restConfig)
@@ -46,5 +41,5 @@ func main() {
 	}
 
 	sCtx := sc.NewSensorContext(sensorClient, kubeClient, restConfig, sensor, log)
-	sCtx.StartNotificationHandler()
+	sCtx.WatchSignalNotifications()
 }

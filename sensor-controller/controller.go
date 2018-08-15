@@ -21,7 +21,6 @@ import (
 	"errors"
 	"sync"
 	"time"
-	pb "github.com/argoproj/argo-events/proto"
 
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -67,10 +66,6 @@ type SensorController struct {
 	informer cache.SharedIndexInformer
 	queue    workqueue.RateLimitingInterface
 
-	// Todo: make it pointer to channel
-	// sensor channels
-	sensorChs map[string]chan pb.SensorEvent
-
 	// mutex for sensor channels
 	sMux sync.Mutex
 }
@@ -83,7 +78,6 @@ func NewSensorController(rest *rest.Config, configMap string) *SensorController 
 		kubeClientset:   kubernetes.NewForConfigOrDie(rest),
 		sensorClientset: sensorclientset.NewForConfigOrDie(rest),
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		sensorChs:  map[string]chan pb.SensorEvent{},
 	}
 }
 
@@ -112,24 +106,13 @@ func (c *SensorController) processNextItem() bool {
 		return true
 	}
 
-	c.sMux.Lock()
-	if sensorCh, ok := c.sensorChs[sensor.Name]; !ok {
-		sensorCh = make(chan pb.SensorEvent)
-		c.sensorChs[sensor.Name] = sensorCh
-	}
-	c.sMux.Unlock()
-
-	ctx := newSensorOperationCtx(sensor, c, c.sensorChs[sensor.Name])
+	ctx := newSensorOperationCtx(sensor, c)
 
 	err = c.handleErr(ctx.operate(), key)
 	if err != nil {
 		// now let's escalate the sensor
 		// the context should have the most up-to-date version
 		log.Infof("escalating sensor to level %s via %s message", ctx.s.Spec.Escalation.Level, ctx.s.Spec.Escalation.Message)
-		err := sendMessage(&ctx.s.Spec.Escalation.Message)
-		if err != nil {
-			log.Panicf("failed escalating sensor '%s'", key)
-		}
 	}
 
 	return true

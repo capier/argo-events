@@ -33,62 +33,38 @@ ifdef IMAGE_NAMESPACE
 IMAGE_PREFIX=${IMAGE_NAMESPACE}/
 endif
 
-# this is the default stream service
-STREAM=nats
-
 # Build the project images
 .DELETE_ON_ERROR:
-all: controller-image artifact-image calendar-image resource-image webhook-image stream-image
+all: sensor-controller gateway-controller
 
-.PHONY: all controller controller-image clean test
+.PHONY: all sensor-controller sensor-controller-image gateway-controller gateway-controller-image clean test
 
 # Sensor controller
-controller:
+sensor-controller:
 	go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/sensor-controller ./cmd/sensor-controller
 
-controller-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make controller
+sensor-controller-linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make sensor-controller
 
-controller-image: controller-linux
+sensor-controller-image: controller-linux
 	docker build -t $(IMAGE_PREFIX)sensor-controller:$(IMAGE_TAG) -f ./controller/Dockerfile .
 	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)sensor-controller:$(IMAGE_TAG) ; fi
 
-# signal microservice binaries
-artifact:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/artifact-signal ./signals/artifact/micro
+# Gateway controller
+gateway-controller:
+    go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/gateway-controller ./cmd/gateway-controller/main.go
 
-calendar:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/calendar-signal ./signals/calendar/micro
+# Gateway transformer
+gateway-transformer:
+    go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/gateway-transformer ./cmd/gateway-controller/transform/
 
-resource:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/resource-signal ./signals/resource/micro
-
+# gateway binaries
 webhook:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/webhook-signal ./signals/webhook/micro
-
-stream:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/${STREAM}-signal ./signals/stream/builtin/${STREAM}/micro
-
-# signal microservice docker images
-artifact-image: artifact
-	docker build -t $(IMAGE_PREFIX)artifact-signal:$(IMAGE_TAG) -f ./signals/artifact/micro/Dockerfile .
-	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)artifact-signal:$(IMAGE_TAG) ; fi
-
-calendar-image: calendar
-	docker build -t $(IMAGE_PREFIX)calendar-signal:$(IMAGE_TAG) -f ./signals/calendar/micro/Dockerfile .
-	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)calendar-signal:$(IMAGE_TAG) ; fi
-
-resource-image: resource
-	docker build -t $(IMAGE_PREFIX)resource-signal:$(IMAGE_TAG) -f ./signals/resource/micro/Dockerfile .
-	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)resource-signal:$(IMAGE_TAG) ; fi
 
 webhook-image: webhook
 	docker build -t $(IMAGE_PREFIX)webhook-signal:$(IMAGE_TAG) -f ./signals/webhook/micro/Dockerfile .
 	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)webhook-signal:$(IMAGE_TAG) ; fi
-
-stream-image: stream
-	docker build -t $(IMAGE_PREFIX)stream-$(STREAM)-signal:$(IMAGE_TAG) -f ./signals/stream/builtin/$(STREAM)/micro/Dockerfile .
-	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)stream-$(STREAM)-signal:$(IMAGE_TAG) ; fi
 
 test:
 	go test $(shell go list ./... | grep -v /vendor/) -race -short -v

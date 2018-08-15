@@ -18,10 +18,10 @@ package sensor_controller
 
 import (
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
-	"github.com/argoproj/argo-events/pkg/event"
+	sv1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
-func (sc *sensorCtx) processSignal(name string, event *event.Event) {
+func (sc *sensorCtx) processSignal(name string, event *sv1alpha.Event) {
 	sc.log.Info().Str("signal-name", name).Msg("processing signal")
 	node := getNodeByName(sc.sensor, name)
 	node.LatestEvent = &v1alpha1.EventWrapper{

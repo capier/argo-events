@@ -1,0 +1,24 @@
+# The gateway-controller listens for changes on the gateway CRD and creates gateway
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: gatewat-controller
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sensor-controller
+    spec:
+      serviceAccountName: argo-events-sa
+      containers:
+      - name: sensor-controller
+        image: metalgearsolid/gateway-controller:latest
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: GATEWAY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: GATEWAY_CONFIG_MAP
+            value: gateway-controller-configmap

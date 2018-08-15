@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
-	"github.com/argoproj/argo-events/pkg/event"
+	sv1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	sv1 "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/context"
@@ -58,11 +58,12 @@ func (sc *sensorCtx) watchSensorUpdates() {
 	}
 }
 
-func (sc *sensorCtx) StartNotificationHandler() *http.Server {
+// WatchNotifications watches and handles signals sent by the gateway the sensor is interested in.
+func (sc *sensorCtx) WatchSignalNotifications() *http.Server {
 	// watch sensor updates
 	go sc.watchSensorUpdates()
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", common.SensorServicePort)}
-	http.HandleFunc("/", sc.handleGatewayNotification)
+	http.HandleFunc("/", sc.handleSignals)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			// cannot panic, because this probably is an intentional close
@@ -72,36 +73,37 @@ func (sc *sensorCtx) StartNotificationHandler() *http.Server {
 	return srv
 }
 
-// Handles notifications from gateway/s
-func (sc *sensorCtx) handleGatewayNotification(w http.ResponseWriter, r *http.Request) {
+// Handles signals from gateway/s
+func (sc *sensorCtx) handleSignals(w http.ResponseWriter, r *http.Request) {
+	// decode signals received from the gateway
 	decoder := json.NewDecoder(r.Body)
-	var gatewayNotification *event.Event
+	var gatewayNotification *sv1alpha.Event
 	err := decoder.Decode(gatewayNotification)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to decode gateway notification")
 	}
 
-	// validate the notification is from gateway of interest
+	// validate the signal notification is from gateway of interest
 	for _, signal := range sc.sensor.Spec.Signals {
-		if signal.Name != gatewayNotification.Ctx.Source {
-			log.Error().Str("signal-source", gatewayNotification.Ctx.Source).Msg("unknown signal source")
+		if signal.Name != gatewayNotification.Context.Source.Host {
+			log.Error().Str("signal-source", gatewayNotification.Context.Source.Host).Msg("unknown signal source")
 			return
 		}
 	}
 
 	// check if signal is already completed
-	if getNodeByName(sc.sensor, gatewayNotification.Ctx.Source).Phase == v1alpha1.NodePhaseComplete {
-		log.Error().Str("signal-source", gatewayNotification.Ctx.Source).Msg("signal is already completed")
+	if getNodeByName(sc.sensor, gatewayNotification.Context.Source.Host).Phase == v1alpha1.NodePhaseComplete {
+		log.Error().Str("signal-source", gatewayNotification.Context.Source.Host).Msg("signal is already completed")
 		return
 	}
 
 	// process the signal
-	sc.processSignal(gatewayNotification.Ctx.Source, gatewayNotification)
+	sc.processSignal(gatewayNotification.Context.Source.Host, gatewayNotification)
 	sc.sensor, err = sc.updateSensor()
 	if err != nil {
 		err = sc.reapplyUpdate()
 		if err != nil {
-			sc.log.Error().Str("signal-name", gatewayNotification.Ctx.Source).Msg("failed to update signal node state")
+			sc.log.Error().Str("signal-name", gatewayNotification.Context.Source.Host).Msg("failed to update signal node state")
 			return
 		}
 	}
@@ -153,9 +155,10 @@ func (sc *sensorCtx) updateSensor() (*v1alpha1.Sensor, error) {
 }
 
 func (sc *sensorCtx) updateNodePhase(name string, phase v1alpha1.NodePhase) {
-	node := sc.sensor.Status.Nodes[sc.sensor.NodeID(name)]
+	// Todo: add information like update message, update time to node
+	node := getNodeByName(sc.sensor, name)
 	node.Phase = phase
-	sc.sensor.Status.Nodes[sc.sensor.NodeID(name)] = node
+	sc.sensor.Status.Nodes[node.ID] = *node
 }
 
 func (sc *sensorCtx) reapplyUpdate() error {

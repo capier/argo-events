@@ -11,7 +11,6 @@ import (
 	"log"
 )
 
-
 func main() {
 	kubeConfig, _ := os.LookupEnv(common.EnvVarKubeConfig)
 	restConfig, err := common.GetClientConfig(kubeConfig)
@@ -38,7 +37,7 @@ func main() {
 	}
 
 	// Create an operation context
-	eoc := transform.NewEventOperationContext(name, namespace, kubeClient)
+	eoc := transform.NewTransformOperationContext(name, namespace, kubeClient)
 	eoc.Config.Source = name
 
 	ctx := context.Background()

@@ -19,13 +19,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/argoproj/argo-events/pkg/event"
+	v1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
 // this test is meant to cover the missing cases for those not covered in signal-filter_test.go and trigger-params_test.go
 func Test_renderEventDataAsJSON(t *testing.T) {
 	type args struct {
-		e *event.Event
+		e *v1alpha.Event
 	}
 	tests := []struct {
 		name    string
@@ -41,14 +41,14 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 		},
 		{
 			name:    "missing content type",
-			args:    args{e: &event.Event{}},
+			args:    args{e: &v1alpha.Event{}},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "valid yaml content",
-			args: args{e: &event.Event{
-				Ctx: event.EventContext{
+			args: args{e: &v1alpha.Event{
+				Context: eventv1.EventContext{
 					ContentType: MediaTypeYAML,
 				},
 				Payload: []byte(`apiVersion: v1alpha1`),
@@ -58,8 +58,8 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 		},
 		{
 			name: "json content marked as yaml",
-			args: args{e: &event.Event{
-				Ctx: event.EventContext{
+			args: args{e: &v1alpha.Event{
+				Context: v1alpha.EventContext{
 					ContentType: MediaTypeYAML,
 				},
 				Payload: []byte(`{"apiVersion":5}`),
@@ -69,8 +69,8 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 		},
 		{
 			name: "invalid json content",
-			args: args{e: &event.Event{
-				Ctx: event.EventContext{
+			args: args{e: &v1alpha.Event{
+				Context: v1alpha.EventContext{
 					ContentType: MediaTypeJSON,
 				},
 				Payload: []byte(`{5:"numberkey"}`),
@@ -80,8 +80,8 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 		},
 		{
 			name: "invalid yaml content",
-			args: args{e: &event.Event{
-				Ctx: event.EventContext{
+			args: args{e: &v1alpha.Event{
+				Context: v1alpha.EventContext{
 					ContentType: MediaTypeYAML,
 				},
 				Payload: []byte(`%\x786`),
@@ -92,7 +92,7 @@ func Test_renderEventDataAsJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := RenderEventDataAsJSON(tt.args.e)
+			got, err := renderEventDataAsJSON(tt.args.e)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("renderEventDataAsJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return

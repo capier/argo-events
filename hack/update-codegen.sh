@@ -32,3 +32,4 @@ bash -x ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/argoproj/argo-events/pkg/gateway-client github.com/argoproj/argo-events/pkg/apis \
   "gateway:v1alpha1" \
   --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
+

@@ -45,9 +45,6 @@ type GatewayControllerConfig struct {
 
 	// Namespace is a label selector filter to limit gateway-controller-controller's watch to specific namespace
 	Namespace string `json:"namespace"`
-
-	// Sensor is the name of sensor to which event should be sent
-	Sensor string `json:"sensor"`
 }
 
 // gatewayController listens for new gateways and hands off handling of each gateway-controller on the queue to the operator

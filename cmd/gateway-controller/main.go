@@ -18,7 +18,7 @@ func main() {
 	// sensor-controller configuration
 	configMap, ok := os.LookupEnv(common.EnvVarConfigMap)
 	if !ok {
-		configMap = common.DefaultConfigMapName(common.DefaultSensorControllerDeploymentName)
+		configMap = common.DefaultConfigMapName(common.DefaultGatewayControllerDeploymentName)
 	}
 
 	controller := gateway_controller.NewGatewayController(restConfig, configMap)

@@ -12,8 +12,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func (e *eOperationCtx) WatchEventConfigMap(ctx context.Context, name string) (cache.Controller, error) {
-	source := e.newStoreConfigMapWatch(name)
+func (t *tOperationCtx) WatchEventConfigMap(ctx context.Context, name string) (cache.Controller, error) {
+	source := t.newStoreConfigMapWatch(name)
 	_, controller := cache.NewInformer(
 		source,
 		&apiv1.ConfigMap{},
@@ -21,19 +21,19 @@ func (e *eOperationCtx) WatchEventConfigMap(ctx context.Context, name string) (c
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				if cm, ok := obj.(*apiv1.ConfigMap); ok {
-					e.log.Info().Str("config-map", name).Msg("detected ConfigMap update. Updating the controller config.")
-					err := e.updateConfig(cm)
+					t.log.Info().Str("config-map", name).Msg("detected ConfigMap update. Updating the controller config.")
+					err := t.updateConfig(cm)
 					if err != nil {
-						e.log.Error().Err(err).Msg("update of config failed")
+						t.log.Error().Err(err).Msg("update of config failed")
 					}
 				}
 			},
 			UpdateFunc: func(old, new interface{}) {
 				if newCm, ok := new.(*apiv1.ConfigMap); ok {
-					e.log.Info().Msg("detected ConfigMap update. Updating the controller config.")
-					err := e.updateConfig(newCm)
+					t.log.Info().Msg("detected ConfigMap update. Updating the controller config.")
+					err := t.updateConfig(newCm)
 					if err != nil {
-						e.log.Error().Err(err).Msg("update of config failed")
+						t.log.Error().Err(err).Msg("update of config failed")
 					}
 				}
 			},
@@ -43,15 +43,15 @@ func (e *eOperationCtx) WatchEventConfigMap(ctx context.Context, name string) (c
 	return controller, nil
 }
 
-func (e *eOperationCtx) newStoreConfigMapWatch(name string) *cache.ListWatch {
-	x := e.kubeClientset.CoreV1().RESTClient()
+func (t *tOperationCtx) newStoreConfigMapWatch(name string) *cache.ListWatch {
+	x := t.kubeClientset.CoreV1().RESTClient()
 	resource := "configmaps"
 	fieldSelector := fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", name))
 
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		options.FieldSelector = fieldSelector.String()
 		req := x.Get().
-			Namespace(e.Namespace).
+			Namespace(t.Namespace).
 			Resource(resource).
 			VersionedParams(&options, metav1.ParameterCodec)
 		return req.Do().Get()
@@ -60,7 +60,7 @@ func (e *eOperationCtx) newStoreConfigMapWatch(name string) *cache.ListWatch {
 		options.Watch = true
 		options.FieldSelector = fieldSelector.String()
 		req := x.Get().
-			Namespace(e.Namespace).
+			Namespace(t.Namespace).
 			Resource(resource).
 			VersionedParams(&options, metav1.ParameterCodec)
 		return req.Watch()
@@ -68,7 +68,7 @@ func (e *eOperationCtx) newStoreConfigMapWatch(name string) *cache.ListWatch {
 	return &cache.ListWatch{ListFunc: listFunc, WatchFunc: watchFunc}
 }
 
-func (e *eOperationCtx) updateConfig(cm *apiv1.ConfigMap) error {
+func (t *tOperationCtx) updateConfig(cm *apiv1.ConfigMap) error {
 	eventType, ok := cm.Data[common.EventType]
 	if !ok {
 		return fmt.Errorf("configMap '%s' does not have key '%s'", cm.Name, common.EventType)
@@ -77,7 +77,7 @@ func (e *eOperationCtx) updateConfig(cm *apiv1.ConfigMap) error {
 	if !ok {
 		return fmt.Errorf("configMap '%s' does not have key '%s'", cm.Name, common.EventTypeVersion)
 	}
-	e.Config = EventConfig{
+	t.Config = GatewayConfig{
 		EventType:        eventType,
 		EventTypeVersion: eventTypeVersion,
 	}

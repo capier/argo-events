@@ -236,7 +236,7 @@ func Test_filterData(t *testing.T) {
 		},
 		{
 			name:    "unsupported content type",
-			args:    args{dataFilters: nil, event: &v1alpha1.Event{Data: []byte("a")}},
+			args:    args{dataFilters: nil, event: &v1alpha1.Event{Payload: []byte("a")}},
 			want:    false,
 			wantErr: true,
 		},
@@ -256,7 +256,7 @@ func Test_filterData(t *testing.T) {
 				Context: v1alpha1.EventContext{
 					ContentType: "application/json",
 				},
-				Data: []byte("{\"k\": \"v\"}"),
+				Payload: []byte("{\"k\": \"v\"}"),
 			}},
 			want:    true,
 			wantErr: false,
@@ -273,7 +273,7 @@ func Test_filterData(t *testing.T) {
 				Context: v1alpha1.EventContext{
 					ContentType: "application/json",
 				},
-				Data: []byte("{\"k\": \"v\"}"),
+				Payload: []byte("{\"k\": \"v\"}"),
 			}},
 			want:    true,
 			wantErr: false,
@@ -290,7 +290,7 @@ func Test_filterData(t *testing.T) {
 				Context: v1alpha1.EventContext{
 					ContentType: "application/json",
 				},
-				Data: []byte("{\"k\": \"1.0\"}"),
+				Payload: []byte("{\"k\": \"1.0\"}"),
 			}},
 			want:    true,
 			wantErr: false,
@@ -317,7 +317,7 @@ func Test_filterData(t *testing.T) {
 				Context: v1alpha1.EventContext{
 					ContentType: "application/json",
 				},
-				Data: []byte("{\"k\": true, \"k1\": {\"k\": 3.14, \"k2\": \"hello, world\"}}"),
+				Payload: []byte("{\"k\": true, \"k1\": {\"k\": 3.14, \"k2\": \"hello, world\"}}"),
 			}},
 			want:    false,
 			wantErr: false,
