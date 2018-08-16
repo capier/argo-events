@@ -35,9 +35,22 @@ endif
 
 # Build the project images
 .DELETE_ON_ERROR:
-all: sensor-controller gateway-controller
+all: sensor-linux sensor-controller-linux gateway-controller-linux gateway-controller-linux
+
+docker-all: sensor-image sensor-controller-image gateway-controller-image gateway-transformer-image
 
 .PHONY: all sensor-controller sensor-controller-image gateway-controller gateway-controller-image clean test
+
+# Sensor
+sensor:
+	go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/sensor ./sensor-controller/cmd/
+
+sensor-linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make sensor
+
+sensor-image: sensor-linux
+	docker build -t $(IMAGE_PREFIX)sensor:$(IMAGE_TAG) -f ./sensor-controller/cmd/Dockerfile .
+	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)sensor:$(IMAGE_TAG) ; fi
 
 # Sensor controller
 sensor-controller:
@@ -52,11 +65,26 @@ sensor-controller-image: controller-linux
 
 # Gateway controller
 gateway-controller:
-    go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/gateway-controller ./cmd/gateway-controller/main.go
+	go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/gateway-controller ./cmd/gateway-controller/main.go
+
+gateway-controller-linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make gateway-controller
+
+gateway-controller-image: gateway-controller-linux
+	docker build -t $(IMAGE_PREFIX)gateway-controller:$(IMAGE_TAG) -f ./gateway-controller/Dockerfile .
+	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)gateway-controller:$(IMAGE_TAG) ; fi
 
 # Gateway transformer
 gateway-transformer:
-    go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/gateway-transformer ./cmd/gateway-controller/transform/
+	go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/gateway-transformer ./cmd/gateway-controller/transform/main.go
+
+gateway-transformer-linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make gateway-transformer
+
+gateway-transformer-image: gateway-transformer-linux
+	docker build -t $(IMAGE_PREFIX)gateway-transformer:$(IMAGE_TAG) -f ./gateway-controller/transform/Dockerfile .
+	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)gateway-transformer:$(IMAGE_TAG) ; fi
+
 
 # gateway binaries
 webhook:

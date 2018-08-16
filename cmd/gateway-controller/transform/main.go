@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
+	"context"
 )
 
 func main() {
@@ -36,12 +38,21 @@ func main() {
 	}
 
 	tConfigMapData := tConfigMap.Data
-	eventSource := tConfigMapData[common.EventSource]
-	eventType := tConfigMapData[common.EventType]
-	eventVersion := tConfigMapData[common.EventTypeVersion]
+	// create the configuration for transforming and dispatching the event
+	eventConfig := transform.EventConfig{
+		Sensors: strings.Split(tConfigMapData[common.SensorList], ","),
+		EventSource: tConfigMapData[common.EventSource],
+		EventType: tConfigMapData[common.EventType],
+		EventTypeVersion: tConfigMapData[common.EventTypeVersion],
+	}
 
 	// Create an operation context
-	eoc := transform.NewTransformOperationContext(eventSource, namespace, kubeClient)
+	eoc := transform.NewTransformOperationContext(eventConfig.EventSource, namespace, kubeClient)
+	ctx := context.Background()
+	_, err = eoc.WatchEventConfigMap(ctx, configmap)
+	if err != nil {
+		log.Fatalf("failed to register watch for store config map: %+v", err)
+	}
 
 	http.HandleFunc("/", eoc.HandleTransformRequest)
 	log.Fatal(http.ListenAndServe(":" + fmt.Sprintf("%d", common.TransformerPort), nil))

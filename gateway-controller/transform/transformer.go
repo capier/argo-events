@@ -83,30 +83,31 @@ func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
 
 // dispatches the event to configured sensor
 func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
-	sensorService, err := toc.kubeClientset.CoreV1().Services(toc.Namespace).Get(toc.Config.Sensor, metav1.GetOptions{})
-	if err != nil {
-		toc.log.Error().Str("sensor-svc", toc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
-		return err
-	}
+	for _, sensor := range toc.Config.Sensors {
+		sensorService, err := toc.kubeClientset.CoreV1().Services(toc.Namespace).Get(sensor, metav1.GetOptions{})
+		if err != nil {
+			toc.log.Error().Str("sensor-svc", sensor).Err(err).Msg("failed to connect to sensor service")
+			return err
+		}
 
-	if sensorService.Spec.ClusterIP == "" {
-		toc.log.Error().Str("sensor-service", toc.Config.Sensor).Err(err).Msg("failed to connect to sensor service")
-		return err
-	}
-	toc.log.Debug().Str("sensor-service-ip", sensorService.Spec.ClusterIP).Msg("sensor service ip")
+		if sensorService.Spec.ClusterIP == "" {
+			toc.log.Error().Str("sensor-service", sensor).Err(err).Msg("failed to connect to sensor service")
+			return err
+		}
+		toc.log.Debug().Str("sensor-service-ip", sensorService.Spec.ClusterIP).Msg("sensor service ip")
 
-	eventBytes, err := json.Marshal(ce)
-	if err != nil {
-		toc.log.Error().Err(err).Msg("failed to get event bytes")
-		return err
-	}
+		eventBytes, err := json.Marshal(ce)
+		if err != nil {
+			toc.log.Error().Err(err).Msg("failed to get event bytes")
+			return err
+		}
 
-	_, err = http.Post(sensorService.Spec.ClusterIP, "application/json", bytes.NewReader(eventBytes))
-	if err != nil {
-		toc.log.Error().Err(err).Msg("failed to dispatch event to the sensor")
-		return err
+		_, err = http.Post(sensorService.Spec.ClusterIP, "application/json", bytes.NewReader(eventBytes))
+		if err != nil {
+			toc.log.Error().Err(err).Msg("failed to dispatch event to the sensor")
+			return err
+		}
 	}
-
 	return nil
 }
 
