@@ -1,3 +1,3 @@
-FROM scratch
-COPY dist/sensor-controller /
-CMD [ "/sensor-controller" ]
+FROM centos:7
+COPY dist/sensor-controller /bin/
+ENTRYPOINT [ "/bin/sensor-controller" ]

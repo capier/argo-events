@@ -2,8 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: gateway-controller-configmap
+  name: webhook-gateway-configmap
   namespace: argo-events
 data:
-  config: |
-    instanceID: axis
+  port: 13000
+  endpointURL: "/app"
+  method: "POST"

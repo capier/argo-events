@@ -14,7 +14,7 @@ spec:
       containers:
       - name: gateway-controller
         image: metalgearsolid/gateway-controller:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         env:
           - name: GATEWAY_NAMESPACE
             valueFrom:

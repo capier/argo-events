@@ -7,7 +7,6 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"os"
 
 	"fmt"
@@ -31,9 +30,6 @@ type gwOperationCtx struct {
 
 	// reference to the gateway-controller-controller
 	controller *GatewayController
-
-	// kubernetes clientset
-	kubeClientset kubernetes.Clientset
 }
 
 // newGatewayOperationCtx creates and initializes a new gOperationCtx object
@@ -66,7 +62,7 @@ func (goc *gwOperationCtx) operate() error {
 		// declare the configuration map for gateway transformer
 		gatewayConfigMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: goc.gw.Name + "-gateway-transformer-configmap",
+				Name: goc.gw.Name + "-transformer-configmap",
 				Namespace: goc.gw.Namespace,
 			},
 			Data: map[string]string{
@@ -77,8 +73,19 @@ func (goc *gwOperationCtx) operate() error {
 			},
 		}
 
+		fmt.Println("PRINTING PODS")
+
+		pods , err := goc.controller.kubeClientset.CoreV1().Pods("argo-events").List(metav1.ListOptions{})
+		if err != nil {
+			goc.log.Error().Err(err).Msg("failed to create transformer gateway configuration")
+		}
+
+		for _, p := range pods.Items {
+			fmt.Println(p.Name)
+		}
+
 		// create gateway transformer configmap
-		_, err := goc.kubeClientset.CoreV1().ConfigMaps(goc.gw.Namespace).Create(gatewayConfigMap)
+		_, err = goc.controller.kubeClientset.CoreV1().ConfigMaps(goc.gw.Namespace).Create(gatewayConfigMap)
 		if err != nil {
 			goc.log.Error().Err(err).Msg("failed to create transformer gateway configuration")
 			// mark gateway as failed
@@ -93,6 +100,8 @@ func (goc *gwOperationCtx) operate() error {
 			}
 		}
 
+		goc.log.Info().Str("gateway-name", goc.gw.Name).Msg("creating deployment")
+
 		gatewayDeployment := &appv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      goc.gw.Name + "-deployment",
@@ -100,14 +109,19 @@ func (goc *gwOperationCtx) operate() error {
 				Labels: map[string]string{
 					"gateway-name": goc.gw.Name,
 				},
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						Name: goc.gw.Name,
-					},
-				},
 			},
 			Spec: appv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"gateway-name": goc.gw.Name,
+					},
+				},
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"gateway-name": goc.gw.Name,
+						},
+					},
 					Spec: corev1.PodSpec{
 						ServiceAccountName: goc.gw.Spec.ServiceAccountName,
 						Containers: []corev1.Container{
@@ -121,10 +135,6 @@ func (goc *gwOperationCtx) operate() error {
 										Name:  common.TransformerPortEnvVar,
 										Value: fmt.Sprintf("%d", common.TransformerPort),
 									},
-									{
-										Name:  common.GatewayConfigMapEnvVar,
-										Value: goc.gw.Spec.ConfigMap,
-									},
 								},
 							},
 							{
@@ -134,7 +144,7 @@ func (goc *gwOperationCtx) operate() error {
 								Env: []corev1.EnvVar{
 									{
 										Name:  common.GatewayConfigMapEnvVar,
-										Value: goc.gw.Name + "-gateway-transformer-configmap",
+										Value: goc.gw.Name + "-transformer-configmap",
 									},
 									{
 										Name: common.EnvVarNamespace,
@@ -150,7 +160,7 @@ func (goc *gwOperationCtx) operate() error {
 
 		// we can now create the gateway deployment.
 		// depending on user configuration gateway will be exposed outside the cluster or intra-cluster.
-		_, err = goc.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Create(gatewayDeployment)
+		_, err = goc.controller.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Create(gatewayDeployment)
 		if err != nil {
 			goc.log.Error().Str("gateway", goc.gw.Name).Err(err).Msg("failed gateway deployment")
 			goc.gw.Status = v1alpha1.NodePhaseError
@@ -173,7 +183,7 @@ func (goc *gwOperationCtx) operate() error {
 
 		// Gateway is in error
 	case v1alpha1.NodePhaseError:
-		gDeployment, err := goc.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Get(goc.gw.Name, metav1.GetOptions{})
+		gDeployment, err := goc.controller.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Get(goc.gw.Name, metav1.GetOptions{})
 		if err != nil {
 			goc.log.Error().Str("gateway name", goc.gw.Name).Err(err).Msg("Error occurred retrieving gateway deployment")
 			return err
@@ -181,7 +191,7 @@ func (goc *gwOperationCtx) operate() error {
 
 		// If image has been updated
 		gDeployment.Spec.Template.Spec.Containers[0].Image = goc.gw.Spec.Image
-		_, err = goc.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Update(gDeployment)
+		_, err = goc.controller.kubeClientset.AppsV1().Deployments(goc.gw.Namespace).Update(gDeployment)
 		if err != nil {
 			goc.log.Error().Str("gateway", goc.gw.Name).Err(err).Msg("Error occurred updating gateway deployment")
 			return err

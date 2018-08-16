@@ -55,7 +55,7 @@ func NewTransformOperationContext(name string, namespace string, clientset kuber
 // Transform request transforms http request payload into CloudEvent
 func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
 	// Generate an event id
-	eventId := suuid.Must(suuid.NewV4())
+	eventId := suuid.Must(suuid.NewV4(), nil)
 	payload, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Errorf("failed to parse request payload. Err %+v", err)

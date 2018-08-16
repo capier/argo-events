@@ -1,3 +1,3 @@
-FROM scratch
-COPY dist/gateway-controller /
-CMD [ "/gateway-controller" ]
+FROM centos:7
+COPY dist/gateway-controller /bin/
+ENTRYPOINT [ "/bin/gateway-controller" ]

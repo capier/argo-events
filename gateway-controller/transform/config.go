@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	"strings"
 )
 
 func (t *tOperationCtx) WatchEventConfigMap(ctx context.Context, name string) (cache.Controller, error) {
@@ -77,9 +78,20 @@ func (t *tOperationCtx) updateConfig(cm *apiv1.ConfigMap) error {
 	if !ok {
 		return fmt.Errorf("configMap '%s' does not have key '%s'", cm.Name, common.EventTypeVersion)
 	}
-	t.Config = GatewayConfig{
+	sensors, ok := cm.Data[common.SensorList]
+	if !ok {
+		return fmt.Errorf("configMap '%s' does not have key '%s'", cm.Name, common.SensorList)
+	}
+	eventSource, ok := cm.Data[common.EventSource]
+	if !ok {
+		return fmt.Errorf("configMap '%s' does not have key '%s'", cm.Name, common.EventSource)
+	}
+
+	t.Config = EventConfig {
 		EventType:        eventType,
 		EventTypeVersion: eventTypeVersion,
+		Sensors: strings.Split(sensors, ","),
+		EventSource: eventSource,
 	}
 	return nil
 }

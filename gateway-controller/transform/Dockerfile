@@ -1,3 +1,3 @@
-FROM scratch
-COPY dist/gateway-transformer /
-CMD [ "/gateway-transformer" ]
+FROM centos:7
+COPY dist/gateway-transformer /bin/
+ENTRYPOINT [ "/bin/gateway-transformer" ]

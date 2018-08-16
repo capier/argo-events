@@ -15,8 +15,8 @@ override LDFLAGS += \
   -X ${PACKAGE}.gitTreeState=${GIT_TREE_STATE}
 
 # docker image publishing options
-DOCKER_PUSH=false
-IMAGE_NAMESPACE=argoproj
+DOCKER_PUSH=true
+IMAGE_NAMESPACE=metalgearsolid
 IMAGE_TAG=latest
 
 ifeq (${DOCKER_PUSH},true)
@@ -35,9 +35,11 @@ endif
 
 # Build the project images
 .DELETE_ON_ERROR:
-all: sensor-linux sensor-controller-linux gateway-controller-linux gateway-controller-linux
+all: sensor-linux sensor-controller-linux gateway-controller-linux gateway-transformer-linux
 
 docker-all: sensor-image sensor-controller-image gateway-controller-image gateway-transformer-image
+
+docker-gateway-example: webhook-image
 
 .PHONY: all sensor-controller sensor-controller-image gateway-controller gateway-controller-image clean test
 
@@ -59,8 +61,8 @@ sensor-controller:
 sensor-controller-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make sensor-controller
 
-sensor-controller-image: controller-linux
-	docker build -t $(IMAGE_PREFIX)sensor-controller:$(IMAGE_TAG) -f ./controller/Dockerfile .
+sensor-controller-image: sensor-controller-linux
+	docker build -t $(IMAGE_PREFIX)sensor-controller:$(IMAGE_TAG) -f ./sensor-controller/Dockerfile .
 	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)sensor-controller:$(IMAGE_TAG) ; fi
 
 # Gateway controller
@@ -88,11 +90,14 @@ gateway-transformer-image: gateway-transformer-linux
 
 # gateway binaries
 webhook:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/webhook-signal ./signals/webhook/micro
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags '${LDFLAGS}' -o ${DIST_DIR}/webhook-gateway ./signals/webhook/
 
-webhook-image: webhook
-	docker build -t $(IMAGE_PREFIX)webhook-signal:$(IMAGE_TAG) -f ./signals/webhook/micro/Dockerfile .
-	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)webhook-signal:$(IMAGE_TAG) ; fi
+webhook-linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make webhook
+
+webhook-image: webhook-linux
+	docker build -t $(IMAGE_PREFIX)webhook-gateway:$(IMAGE_TAG) -f ./signals/webhook/Dockerfile .
+	@if [ "$(DOCKER_PUSH)" = "true" ] ; then docker push $(IMAGE_PREFIX)webhook-gateway:$(IMAGE_TAG) ; fi
 
 test:
 	go test $(shell go list ./... | grep -v /vendor/) -race -short -v

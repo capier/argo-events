@@ -43,7 +43,7 @@ type GatewaySpec struct {
 	Service   Service   `json:"exposed" protobuf:"bytes,7,opt,name=service"`
 
 	// Sensors are list of sensors to dispatch events to
-	Sensors    []string `json:"sensor" protobuf:"bytes,8,opt,name=sensor"`
+	Sensors    []string `json:"sensors" protobuf:"bytes,8,opt,name=sensors"`
 
 	// ServiceAccountName is name of service account to run the gateway
 	ServiceAccountName string `json:"service_account_name" protobuf:"bytes,9,opt,name=service_account_name"`

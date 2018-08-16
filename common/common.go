@@ -73,7 +73,7 @@ const (
 	GatewayControllerConfigMapKey = "config"
 
 	//LabelKeyGatewayControllerInstanceID is the label which allows to separate application among multiple running gateway-controller controllers.
-	LabelKeyGatewayControllerInstanceID = gateway.FullName + "/gateway-controller-controller-instanceid"
+	LabelKeyGatewayControllerInstanceID = gateway.FullName + "/gateway-controller-instanceid"
 
 	// GatewayLabelKeyPhase is a label applied to gateways to indicate the current phase of the gateway-controller (for filtering purposes)
 	GatewayLabelKeyPhase = gateway.FullName + "/phase"
@@ -81,7 +81,9 @@ const (
 	// GatewayConfigMapEnvVar is used for gateway  configuration
 	GatewayConfigMapEnvVar = "GATEWAY_CONFIG_MAP"
 
-	GatewayEventTransformerImage = "metalgearsolid/event-transformer"
+	GatewayEventProcessorConfigMap = "-config-map"
+
+	GatewayEventTransformerImage = "metalgearsolid/gateway-transformer"
 
 	//  TransformerPortEnvVar is the env var for http server port
 	TransformerPortEnvVar = "TRANSFORMER_PORT"

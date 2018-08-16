@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Gateway
+metadata:
+  name: webhook-example-gateway
+  namespace: argo-events
+  labels:
+    gateways.argoproj.io/gateway-controller-instanceid: axis
+    gateway-name: "webhook-example-gateway"
+spec:
+  image: "metalgearsolid/webhook-gateway"
+  command: "/bin/webhook-gateway"
+  type: "webhook"
+  version: "1.0"
+  service:
+    type: "LoadBalancer"
+    port: 12000
+    target_port: 12000
+  service_account_name: "argo-events-sa"
+  sensors: ["webhook-sensor"]

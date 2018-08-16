@@ -26,11 +26,11 @@ const namespacePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 var (
 	// DefaultSensorControllerNamespace is the default namespace where the sensor sensor-controller is installed
-	DefaultSensorControllerNamespace = "default"
+	DefaultSensorControllerNamespace = "argo-events"
 
 	// Todo: Does this even have to be separate
 	// DefaultGatewayControllerNamespace is the default namespace where the sensor sensor-controller is installed
-	DefaultGatewayControllerNamespace = "default"
+	DefaultGatewayControllerNamespace = "argo-events"
 
 	// ErrReadNamespace occurs when the namespace cannot be read from a Kubernetes pod's service account token
 	ErrReadNamespace = errors.New("Could not read namespace from service account secret")
