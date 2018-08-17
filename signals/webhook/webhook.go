@@ -41,7 +41,7 @@ func main() {
 		panic(err)
 	}
 	config := "webhook-gateway-configmap"
-	namespace, _ := os.LookupEnv(common.DefaultGatewayControllerNamespace)
+	namespace := common.DefaultGatewayControllerNamespace
 	targetPort, _ := os.LookupEnv(common.TransformerPortEnvVar)
 
 	clientset := kubernetes.NewForConfigOrDie(restConfig)
@@ -65,5 +65,6 @@ func main() {
 			fmt.Errorf("http method is not supported")
 		}
 	})
+	log.Println(fmt.Sprintf("server is going to start listening port %s", port))
 	log.Fatal(http.ListenAndServe(":" + fmt.Sprintf("%s", port), nil))
 }

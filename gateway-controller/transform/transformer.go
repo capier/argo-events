@@ -78,6 +78,7 @@ func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
 		Payload: payload,
 	}
 
+	toc.log.Info().Msg("request transformed")
 	return ce, nil
 }
 
@@ -94,7 +95,7 @@ func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
 			toc.log.Error().Str("sensor-service", sensor).Err(err).Msg("failed to connect to sensor service")
 			return err
 		}
-		toc.log.Debug().Str("sensor-service-ip", sensorService.Spec.ClusterIP).Msg("sensor service ip")
+		toc.log.Info().Str("sensor-service-ip", sensorService.Spec.ClusterIP).Msg("sensor service ip")
 
 		eventBytes, err := json.Marshal(ce)
 		if err != nil {
@@ -102,6 +103,7 @@ func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
 			return err
 		}
 
+		toc.log.Info().Msg("sending event to sensor")
 		_, err = http.Post(sensorService.Spec.ClusterIP, "application/json", bytes.NewReader(eventBytes))
 		if err != nil {
 			toc.log.Error().Err(err).Msg("failed to dispatch event to the sensor")
@@ -113,6 +115,7 @@ func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
 
 // transforms the event into cloudevent
 func (toc *tOperationCtx) HandleTransformRequest(w http.ResponseWriter, r *http.Request) {
+	toc.log.Info().Msg("transforming incoming request")
 	ce, err := toc.transform(r)
 	if err != nil {
 		toc.log.Error().Err(err).Msg("failed to transform user event into CloudEvent")

@@ -100,6 +100,9 @@ func (goc *gwOperationCtx) operate() error {
 			}
 		}
 
+		if goc.gw.Spec.ImagePullPolicy == "" {
+			goc.gw.Spec.ImagePullPolicy = corev1.PullAlways
+		}
 		goc.log.Info().Str("gateway-name", goc.gw.Name).Msg("creating deployment")
 
 		gatewayDeployment := &appv1.Deployment{
@@ -128,7 +131,7 @@ func (goc *gwOperationCtx) operate() error {
 							{
 								Name: "event-processor",
 								// Add image pull policy to gateway types definition
-								ImagePullPolicy: corev1.PullIfNotPresent,
+								ImagePullPolicy: goc.gw.Spec.ImagePullPolicy,
 								Image:           goc.gw.Spec.Image,
 								Env: []corev1.EnvVar{
 									{
@@ -139,7 +142,7 @@ func (goc *gwOperationCtx) operate() error {
 							},
 							{
 								Name:            "event-transformer",
-								ImagePullPolicy: corev1.PullIfNotPresent,
+								ImagePullPolicy: corev1.PullAlways,
 								Image:           common.GatewayEventTransformerImage,
 								Env: []corev1.EnvVar{
 									{
@@ -226,11 +229,6 @@ func (goc *gwOperationCtx) exposeGateway() {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      goc.gw.Name + "-svc",
 			Namespace: goc.gw.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Name: goc.gw.Name,
-				},
-			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{

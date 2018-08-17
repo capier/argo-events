@@ -1,10 +1,9 @@
-# The gateway-controller configmap includes configuration information for the gateway-controller
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: webhook-gateway-configmap
   namespace: argo-events
 data:
-  port: 13000
+  port: "13000"
   endpointURL: "/app"
   method: "POST"

@@ -8,12 +8,13 @@ metadata:
     gateway-name: "webhook-example-gateway"
 spec:
   image: "metalgearsolid/webhook-gateway"
+  imagePullPolicy: "Always"
   command: "/bin/webhook-gateway"
   type: "webhook"
   version: "1.0"
   service:
     type: "LoadBalancer"
     port: 12000
-    target_port: 12000
-  service_account_name: "argo-events-sa"
+    targetPort: 12000
+  serviceAccountName: "argo-events-sa"
   sensors: ["webhook-sensor"]
