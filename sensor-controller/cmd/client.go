@@ -8,6 +8,7 @@ import (
 	"os"
 	"github.com/rs/zerolog"
 	sc "github.com/argoproj/argo-events/sensor-controller"
+	"sync"
 )
 
 func main() {
@@ -16,33 +17,31 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	sensorName, _ := os.LookupEnv(common.SensorName)
 	if sensorName == "" {
 		panic("sensor name is not provided")
 	}
-
 	sensorNamespace, _ := os.LookupEnv(common.SensorNamespace)
 	if sensorNamespace == "" {
 		panic("sensor namespace is not provided")
 	}
 
+	// initialize logger
 	log := zerolog.New(os.Stdout).With().Str("sensor-name", sensorName).Logger()
-
 	sensorClient, err := sv1.NewForConfig(restConfig)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to get sensor client")
 	}
 	kubeClient := kubernetes.NewForConfigOrDie(restConfig)
-
 	sensor, err := sensorClient.Sensors(sensorNamespace).Get(sensorName, metav1.GetOptions{})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to retrieve sensor")
 	}
 
-	sCtx := sc.NewSensorContext(sensorClient, kubeClient, restConfig, sensor, log)
-	sCtx.WatchSignalNotifications()
-
-	select {}
-
+	sensorExecutor := sc.NewSensorExecutor(sensorClient, kubeClient, restConfig, sensor, log)
+	// wait for sensor http server to shutdown
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go sensorExecutor.WatchSignalNotifications(wg)
+	wg.Wait()
 }

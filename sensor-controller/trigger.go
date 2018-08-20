@@ -30,7 +30,7 @@ import (
 )
 
 // execute the trigger
-func (sc *sensorCtx) executeTrigger(trigger v1alpha1.Trigger) error {
+func (sc *sensorExecutor) executeTrigger(trigger v1alpha1.Trigger) error {
 	if trigger.Resource != nil {
 		creds, err := store.GetCredentials(sc.kubeClient, sc.sensor.Namespace, &trigger.Resource.Source)
 		if err != nil {
@@ -52,7 +52,7 @@ func (sc *sensorCtx) executeTrigger(trigger v1alpha1.Trigger) error {
 	return nil
 }
 
-func (sc *sensorCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj *unstructured.Unstructured) error {
+func (sc *sensorExecutor) createResourceObject(resource *v1alpha1.ResourceObject, obj *unstructured.Unstructured) error {
 	if resource.Namespace != "" {
 		obj.SetNamespace(resource.Namespace)
 	}
@@ -126,7 +126,7 @@ func (sc *sensorCtx) createResourceObject(resource *v1alpha1.ResourceObject, obj
 
 // helper method to extract the events from the signals associated with the resource params
 // returns a map of the events keyed by the signal name
-func (sc *sensorCtx) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]v1alpha.Event {
+func (sc *sensorExecutor) extractSignalEvents(params []v1alpha1.ResourceParameter) map[string]v1alpha.Event {
 	events := make(map[string]v1alpha.Event)
 	for _, param := range params {
 		if param.Src != nil {

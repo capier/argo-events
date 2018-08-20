@@ -20,16 +20,16 @@ import (
 	"runtime/debug"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1 "k8s.io/api/core/v1"
-	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"github.com/argoproj/argo-events/common"
 	"github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 	client "github.com/argoproj/argo-events/pkg/sensor-client/clientset/versioned/typed/sensor/v1alpha1"
+	log "github.com/sirupsen/logrus"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // the context of an operation on a sensor.
@@ -37,13 +37,10 @@ import (
 type sOperationCtx struct {
 	// s is the sensor object
 	s *v1alpha1.Sensor
-
 	// updated indicates whether the sensor object was updated and needs to be persisted back to k8
 	updated bool
-
 	// log is the logrus logging context to correlate logs with a sensor
 	log *log.Entry
-
 	// reference to the sensor sensor-controller
 	controller *SensorController
 }
@@ -100,10 +97,10 @@ func (soc *sOperationCtx) operate() error {
 		// And it will communicate the updates back to sensor controller.
 		sensorJob := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: soc.s.Name,
+				Name:      soc.s.Name,
 				Namespace: soc.s.Namespace,
 				Labels: map[string]string{
-					"name": soc.s.Name,
+					common.LabelJobName: soc.s.Name,
 				},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(soc.s, v1alpha1.SchemaGroupVersionKind),
@@ -112,31 +109,31 @@ func (soc *sOperationCtx) operate() error {
 			Spec: batchv1.JobSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
-						GenerateName: soc.s.Name + "-job",
+						GenerateName: common.DefaultJobName(soc.s.Name),
 						Labels: map[string]string{
-							"name": soc.s.Name,
+							common.LabelJobName: soc.s.Name,
 						},
 					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: soc.s.Name,
-								Image: common.SensorImage,
-								ImagePullPolicy: corev1.PullAlways,
+								Name:            soc.s.Name,
+								Image:           common.SensorImage,
+								ImagePullPolicy: soc.s.Spec.ImagePullPolicy,
 								Env: []corev1.EnvVar{
 									{
-										Name: common.SensorName,
+										Name:  common.SensorName,
 										Value: soc.s.Name,
 									},
 									{
-										Name: common.SensorNamespace,
+										Name:  common.SensorNamespace,
 										Value: soc.s.Namespace,
 									},
 								},
 							},
 						},
-						ServiceAccountName: "argo-events-sa",
-						RestartPolicy: corev1.RestartPolicyNever,
+						ServiceAccountName: soc.s.Spec.ServiceAccountName,
+						RestartPolicy:      corev1.RestartPolicyNever,
 					},
 				},
 			},
@@ -144,7 +141,7 @@ func (soc *sOperationCtx) operate() error {
 		// Create sensor service
 		sensorSvc := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: soc.s.Name + "-svc",
+				Name:      soc.s.Name + "-svc",
 				Namespace: soc.s.Namespace,
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(soc.s, v1alpha1.SchemaGroupVersionKind),
@@ -153,7 +150,7 @@ func (soc *sOperationCtx) operate() error {
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{
 					{
-						Port: common.SensorServicePort,
+						Port:       common.SensorServicePort,
 						TargetPort: intstr.FromInt(common.SensorServicePort),
 					},
 				},

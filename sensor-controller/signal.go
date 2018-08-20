@@ -21,14 +21,12 @@ import (
 	sv1alpha "github.com/argoproj/argo-events/pkg/apis/sensor/v1alpha1"
 )
 
-func (sc *sensorCtx) processSignal(name string, event *sv1alpha.Event) {
-	sc.log.Info().Str("signal-name", name).Msg("processing the signal")
-	node := getNodeByName(sc.sensor, name)
+func (se *sensorExecutor) processSignal(name string, event *sv1alpha.Event) {
+	se.log.Info().Str("signal-name", name).Msg("processing the signal")
+	node := getNodeByName(se.sensor, name)
 	node.LatestEvent = &v1alpha1.EventWrapper{
 		Event: *event,
 		Seen: true,
 	}
-	node.Message = "signal processing completed"
-	node.Phase = v1alpha1.NodePhaseComplete
-	sc.sensor.Status.Nodes[node.ID] = *node
+	se.updateNodePhase(node.Name, v1alpha1.NodePhaseComplete, "signal is completed")
 }

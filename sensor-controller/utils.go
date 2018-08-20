@@ -23,6 +23,9 @@ import (
 	"strings"
 	"encoding/json"
 	"github.com/ghodss/yaml"
+	"time"
+	log "github.com/rs/zerolog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // various supported media types
@@ -83,4 +86,27 @@ func contains(s []string, e string) bool {
 func isJSON(b []byte) bool {
 	var js json.RawMessage
 	return json.Unmarshal(b, &js) == nil
+}
+
+
+// mark the node with a phase, retuns the node
+func markNodePhase(sensor *v1alpha1.Sensor, nodeName string, phase v1alpha1.NodePhase, log log.Logger, message ...string) *v1alpha1.NodeStatus {
+	node := getNodeByName(sensor, nodeName)
+	if node == nil {
+		log.Panic().Str("node-name" , nodeName).Msg("node is uninitialized")
+	}
+	if node.Phase != phase {
+		log.Info().Str("type", string(node.Type)).Str("node-name", node.Name).Str("phase", string(node.Phase))
+		node.Phase = phase
+	}
+	if len(message) > 0 && node.Message != message[0] {
+		log.Info().Str("type", string(node.Type)).Str("node-name", node.Name).Str("phase", string(node.Phase)).Str("message", message[0])
+		node.Message = message[0]
+	}
+	if node.IsComplete() && node.CompletedAt.IsZero() {
+		node.CompletedAt = metav1.Time{Time: time.Now().UTC()}
+		log.Info().Str("type", string(node.Type)).Str("node-name", node.Name).Msg("completed")
+	}
+	sensor.Status.Nodes[node.ID] = *node
+	return node
 }

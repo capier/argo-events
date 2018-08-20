@@ -26,9 +26,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// DefaultConfigMapName returns a formulated name for a configmap name based on the sensor-sensor-controller deployment name
+// DefaultConfigMapName returns a formulated name for a configmap name based on the sensor-controller deployment name
 func DefaultConfigMapName(controllerName string) string {
 	return fmt.Sprintf("%s-configmap", controllerName)
+}
+
+// DefaultJobName returns a formulated name for a job name for sensor
+func DefaultJobName(jobName string) string {
+	return fmt.Sprintf("%s-job", jobName)
 }
 
 // GetClientConfig return rest config, if path not specified, assume in cluster config

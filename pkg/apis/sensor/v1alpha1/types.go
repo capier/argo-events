@@ -79,6 +79,12 @@ type SensorSpec struct {
 	// NOTE: functionality is currently expiremental and part of an initiative to define
 	// a more concrete pattern or cycle for sensor reptition.
 	Repeat bool `json:"repeat,omitempty" protobuf:"bytes,4,opt,name=repeat"`
+
+	// ImagePullPolicy determines the when the image should be pulled from docker repository
+	ImagePullPolicy apiv1.PullPolicy `json:"imagePullPolicy,omitempty" protobuf:"bytes,5,opt,name=imagePullPolicy"`
+
+	// ServiceAccountName required for role based access
+	ServiceAccountName string `json:"serviceAccountName,omitempty" protobuf:"bytes,6,opt,name=serviceAccountName"`
 }
 
 // Signal describes a dependency

@@ -61,6 +61,9 @@ const (
 
 	SensorNamespace = "SENSOR_NAMESPACE"
 
+	// LabelJobName is label for job name
+	LabelJobName = "job-name"
+
 )
 
 // GATEWAY CONSTANTS
