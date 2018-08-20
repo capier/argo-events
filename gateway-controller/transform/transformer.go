@@ -85,7 +85,7 @@ func (toc *tOperationCtx) transform(r *http.Request) (*sv1alpha.Event, error) {
 // dispatches the event to configured sensor
 func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
 	for _, sensor := range toc.Config.Sensors {
-		sensorService, err := toc.kubeClientset.CoreV1().Services(toc.Namespace).Get(sensor, metav1.GetOptions{})
+		sensorService, err := toc.kubeClientset.CoreV1().Services(toc.Namespace).Get(sensor + "-svc", metav1.GetOptions{})
 		if err != nil {
 			toc.log.Error().Str("sensor-svc", sensor).Err(err).Msg("failed to connect to sensor service")
 			return err
@@ -102,11 +102,17 @@ func (toc *tOperationCtx) dispatchTransformedEvent(ce *sv1alpha.Event) error {
 			toc.log.Error().Err(err).Msg("failed to get event bytes")
 			return err
 		}
-
+		toc.log.Info().Interface("event bytes", eventBytes).Msg("event bytes")
 		toc.log.Info().Msg("sending event to sensor")
-		_, err = http.Post(sensorService.Spec.ClusterIP, "application/json", bytes.NewReader(eventBytes))
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d", sensorService.Spec.ClusterIP, common.SensorServicePort), bytes.NewBuffer(eventBytes))
 		if err != nil {
-			toc.log.Error().Err(err).Msg("failed to dispatch event to the sensor")
+			toc.log.Error().Msg("unable to create a http request")
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		_, err = client.Do(req)
+		if err != nil {
 			return err
 		}
 	}

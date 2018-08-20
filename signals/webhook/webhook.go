@@ -58,8 +58,11 @@ func main() {
 	port := configmap.Data["port"]
 	url := configmap.Data["endpointURL"]
 	method := configmap.Data["method"]
+	log.Printf("port %s, url %s, method %s", port, url, method)
 	http.HandleFunc(url, func(writer http.ResponseWriter, request *http.Request) {
+		log.Println(request.Method)
 		if request.Method == method {
+			log.Printf("recieved a request, forwarding it to http://localhost:%s", w.targetPort)
 			http.Post(fmt.Sprintf("http://localhost:%s", w.targetPort), "application/octet-stream", request.Body)
 		} else {
 			fmt.Errorf("http method is not supported")

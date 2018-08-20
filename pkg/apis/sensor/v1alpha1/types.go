@@ -326,7 +326,7 @@ type EventWrapper struct {
 // Adheres to the CloudEvents v0.1 specification
 type Event struct {
 	Context EventContext `json:"context" protobuf:"bytes,1,opt,name=context"`
-	Payload    []byte       `json:"data" protobuf:"bytes,2,opt,name=data"`
+	Payload    []byte       `json:"payload" protobuf:"bytes,2,opt,name=data"`
 }
 
 // EventContext contains metadata that provides circumstantial information about the occurence.

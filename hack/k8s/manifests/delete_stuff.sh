@@ -14,3 +14,9 @@ kargo delete service webhook-example-gateway-svc
 
 kargo delete gateway webhook-example-gateway
 
+kargo delete sensor webhook-example
+
+kargo delete deployment sensor-controller
+
+kargo delete job webhook-example
+

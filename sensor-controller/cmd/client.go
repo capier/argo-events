@@ -42,4 +42,7 @@ func main() {
 
 	sCtx := sc.NewSensorContext(sensorClient, kubeClient, restConfig, sensor, log)
 	sCtx.WatchSignalNotifications()
+
+	select {}
+
 }

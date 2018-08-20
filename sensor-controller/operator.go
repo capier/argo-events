@@ -108,19 +108,32 @@ func (soc *sOperationCtx) operate() error {
 			},
 			Spec: batchv1.JobSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						GenerateName: soc.s.Name + "-job",
+						Labels: map[string]string{
+							"name": soc.s.Name,
+						},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
 								Name: soc.s.Name,
 								Image: common.SensorImage,
+								ImagePullPolicy: corev1.PullAlways,
 								Env: []corev1.EnvVar{
 									{
 										Name: common.SensorName,
 										Value: soc.s.Name,
 									},
+									{
+										Name: common.SensorNamespace,
+										Value: soc.s.Namespace,
+									},
 								},
 							},
 						},
+						ServiceAccountName: "argo-events-sa",
+						RestartPolicy: corev1.RestartPolicyNever,
 					},
 				},
 			},
@@ -152,11 +165,12 @@ func (soc *sOperationCtx) operate() error {
 		}
 		_, err = soc.controller.kubeClientset.CoreV1().Services(soc.s.Namespace).Create(sensorSvc)
 		if err != nil {
+			// fail silently
 			soc.log.Errorf("failed to create sensor service. Err: %+v", err)
-			return err
 		}
 
 		// if we get here - we know the signals are running
+		soc.log.Info("Marking sensor as active")
 		soc.markSensorPhase(v1alpha1.NodePhaseActive, false, "listening for signal events")
 	}
 
@@ -214,7 +228,7 @@ func (soc *sOperationCtx) persistUpdates() {
 			return
 		}
 	}
-	soc.log.Debug("sensor update successful")
+	soc.log.Infof("sensor state %s updated successfully", soc.s.Status.Phase)
 
 	time.Sleep(1 * time.Second)
 }

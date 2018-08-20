@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"fmt"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"io/ioutil"
 )
 
 type sensorCtx struct {
@@ -65,6 +66,7 @@ func (sc *sensorCtx) WatchSignalNotifications() *http.Server {
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", common.SensorServicePort)}
 	http.HandleFunc("/", sc.handleSignals)
 	go func() {
+		log.Info().Str("port", string(common.SensorServicePort)) .Msg("sensor server started listening")
 		if err := srv.ListenAndServe(); err != nil {
 			// cannot panic, because this probably is an intentional close
 			log.Warn().Err(err).Msg("sensor server stopped")
@@ -76,12 +78,15 @@ func (sc *sensorCtx) WatchSignalNotifications() *http.Server {
 // Handles signals from gateway/s
 func (sc *sensorCtx) handleSignals(w http.ResponseWriter, r *http.Request) {
 	// decode signals received from the gateway
-	decoder := json.NewDecoder(r.Body)
-	var gatewayNotification *sv1alpha.Event
-	err := decoder.Decode(gatewayNotification)
+	log.Info().Interface("r method", r.Method).Msg("request body")
+	jsn, err := ioutil.ReadAll(r.Body)
+	gatewayNotification := sv1alpha.Event{}
+	err = json.Unmarshal(jsn, &gatewayNotification)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to decode gateway notification")
 	}
+
+	log.Info().Interface("gateway-notification", gatewayNotification).Msg("decoded gateway notification")
 
 	// validate the signal notification is from gateway of interest
 	for _, signal := range sc.sensor.Spec.Signals {
@@ -98,7 +103,7 @@ func (sc *sensorCtx) handleSignals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// process the signal
-	sc.processSignal(gatewayNotification.Context.Source.Host, gatewayNotification)
+	sc.processSignal(gatewayNotification.Context.Source.Host, &gatewayNotification)
 	sc.sensor, err = sc.updateSensor()
 	if err != nil {
 		err = sc.reapplyUpdate()
