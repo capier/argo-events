@@ -37,7 +37,7 @@ endif
 .DELETE_ON_ERROR:
 all: sensor-linux sensor-controller-linux gateway-controller-linux gateway-transformer-linux
 
-docker-all: sensor-image sensor-controller-image gateway-controller-image gateway-transformer-image
+docker-all: sensor-image sensor-controller-image gateway-controller-image gateway-transformer-image webhook-image
 
 docker-gateway-example: webhook-image
 

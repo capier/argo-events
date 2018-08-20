@@ -105,6 +105,9 @@ func (soc *sOperationCtx) operate() error {
 				Labels: map[string]string{
 					"name": soc.s.Name,
 				},
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(soc.s, v1alpha1.SchemaGroupVersionKind),
+				},
 			},
 			Spec: batchv1.JobSpec{
 				Template: corev1.PodTemplateSpec{
@@ -143,6 +146,9 @@ func (soc *sOperationCtx) operate() error {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: soc.s.Name + "-svc",
 				Namespace: soc.s.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(soc.s, v1alpha1.SchemaGroupVersionKind),
+				},
 			},
 			Spec: corev1.ServiceSpec{
 				Ports: []corev1.ServicePort{

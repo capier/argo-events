@@ -126,7 +126,7 @@ func (sc *sensorCtx) handleSignals(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				sc.log.Error().Str("trigger-name", trigger.Name).Err(err).Msg("trigger failed to execute")
 				sc.updateNodePhase(trigger.Name, v1alpha1.NodePhaseError)
-				sc.updateNodePhase(sc.sensor.Name, v1alpha1.NodePhaseError)
+				sc.sensor.Status.Phase = v1alpha1.NodePhaseError
 				// update the sensor object with error state
 				sc.sensor, err = sc.updateSensor()
 				if err != nil {

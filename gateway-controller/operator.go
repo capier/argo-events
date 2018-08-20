@@ -64,6 +64,9 @@ func (goc *gwOperationCtx) operate() error {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: goc.gw.Name + "-transformer-configmap",
 				Namespace: goc.gw.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(goc.gw, v1alpha1.SchemaGroupVersionKind),
+				},
 			},
 			Data: map[string]string{
 				common.EventSource: goc.gw.Name,
@@ -111,6 +114,9 @@ func (goc *gwOperationCtx) operate() error {
 				Namespace: goc.gw.Namespace,
 				Labels: map[string]string{
 					"gateway-name": goc.gw.Name,
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(goc.gw, v1alpha1.SchemaGroupVersionKind),
 				},
 			},
 			Spec: appv1.DeploymentSpec{
@@ -229,6 +235,9 @@ func (goc *gwOperationCtx) exposeGateway() {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      goc.gw.Name + "-svc",
 			Namespace: goc.gw.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(goc.gw, v1alpha1.SchemaGroupVersionKind),
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
